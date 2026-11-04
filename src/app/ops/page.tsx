@@ -10,7 +10,7 @@ interface M {
   eventLoop: { p50: number; p99: number; max: number };
   memory: { rssMb: number; kbPerConnection: number };
   sheetsPerMinute: number; publishLatencyMs: { p50: number; p99: number };
-  slowClients: { degraded: number; disconnected: number }; redis: 'ready' | 'down';
+  slowClients: { degraded: number; disconnected: number }; redis: 'ready' | 'memory' | 'down';
 }
 
 export default function OpsPage() {
@@ -45,9 +45,8 @@ export default function OpsPage() {
         <h1 className="type-title">Operación</h1>
         <p className="type-body-sm mt-1 text-secondary">
           Se actualiza cada 2 s. Esta consulta la atendió {servedBy || '…'}.
-          {usesGateway ? ' Recarga y cambiará de instancia (sin sesiones pegajosas).' : ' Simulación en este proceso: una sola instancia, sin el gateway.'}
         </p>
-        {error && <p className="notice mt-3" role="alert">No llegan las métricas. Revisa la conexión con el gateway.</p>}
+        {error && <p className="notice mt-3" role="alert">No se pudieron cargar las métricas. Vuelve a intentar en un momento.</p>}
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -78,7 +77,9 @@ export default function OpsPage() {
                 <td className="pr-3">{formatInt(m.memory.kbPerConnection)}</td>
                 <td className="pr-3">{m.publishLatencyMs.p50} / {m.publishLatencyMs.p99}</td>
                 <td className="pr-3">{m.slowClients.degraded} / {m.slowClients.disconnected}</td>
-                <td className={m.redis === 'ready' ? 'text-ok' : 'text-error'}>{m.redis === 'ready' ? '✓ activo' : '✕ caído'}</td>
+                <td className={m.redis === 'down' ? 'text-error' : m.redis === 'ready' ? 'text-ok' : 'text-secondary'}>
+                  {m.redis === 'ready' ? '✓ Redis' : m.redis === 'memory' ? 'memoria' : '✕ caído'}
+                </td>
               </tr>
             ))}
             {instances === null && <tr><td colSpan={10} className="py-4"><div className="skeleton h-6 w-full" /></td></tr>}

@@ -32,7 +32,7 @@ export default function PublicResults() {
       </div>
 
       {status === 'degraded' && (
-        <p className="notice" role="alert">Los datos no se están actualizando. Lo que ves es lo último confirmado.</p>
+        <p className="notice" role="alert">Sin actualización reciente. Lo que ves es lo último confirmado.</p>
       )}
       {corrections > 0 && (
         <p className="notice">Se corrigieron {formatInt(corrections)} {corrections === 1 ? 'acta' : 'actas'} desde que abriste la página.</p>

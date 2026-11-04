@@ -58,7 +58,7 @@ function pruneIdem(state: DemoState): void {
   for (const [k, v] of state.idem) if (v.at < cutoff) state.idem.delete(k);
 }
 
-function appendEvent(state: DemoState, record: StoredSheet, correction: boolean): void {
+function appendEvent(state: DemoState, record: StoredSheet, correction: boolean, delta: Record<string, number>): void {
   const id = nextEventId(state);
   const ev: SheetEvent = {
     id,
@@ -68,7 +68,7 @@ function appendEvent(state: DemoState, record: StoredSheet, correction: boolean)
     municipality: record.municipality,
     version: record.version,
     correction,
-    delta: sheetDelta(record, 1),
+    delta,
     at: Date.now(),
   };
   state.events.push(ev);
@@ -102,8 +102,10 @@ export function ingest(submission: SheetSubmission): IngestResult {
   const { table, station, municipality } = submission;
   const flagged = !balances(submission.votes, submission.voters);
   const priority = Math.abs(sumVotes(submission.votes) - submission.voters);
+  const wasCounted = stored?.counted ?? false;
+  const counted = !flagged;
 
-  if (stored?.counted) applySheetToAggs(state, stored, -1);
+  if (wasCounted && stored) applySheetToAggs(state, stored, -1);
 
   const record: StoredSheet = {
     sheetId: submission.sheetId,
@@ -113,19 +115,29 @@ export function ingest(submission: SheetSubmission): IngestResult {
     version: submission.version,
     votes: submission.votes,
     voters: submission.voters,
-    counted: !flagged,
+    counted,
     jurorId: submission.jurorId,
   };
   state.sheets.set(submission.sheetId, record);
 
-  if (!flagged) {
+  if (counted) {
     applySheetToAggs(state, record, 1);
     state.queue.delete(submission.sheetId);
   } else {
     state.queue.set(submission.sheetId, priority);
   }
 
-  appendEvent(state, record, storedVersion > 0);
+  // Same rule as the gateway: a flagged sheet is stored, but the public total
+  // only moves by (new counted version) − (previous counted version).
+  if (counted || wasCounted) {
+    const net: Record<string, number> = {};
+    const plus = counted ? sheetDelta(record, 1) : {};
+    const minus = wasCounted && stored ? sheetDelta(stored, -1) : {};
+    for (const key of new Set([...Object.keys(plus), ...Object.keys(minus)])) {
+      net[key] = (plus[key] ?? 0) + (minus[key] ?? 0);
+    }
+    appendEvent(state, record, storedVersion > 0, net);
+  }
   bumpSheetMetric(state);
 
   const ackStatus: AckStatus = flagged ? 'FLAGGED' : 'ACCEPTED';
@@ -204,14 +216,19 @@ export function auditState(auditorId?: string): { queue: QueueItem[]; presence: 
   return { queue, presence, serverTime: now };
 }
 
-function touchPresence(state: DemoState, auditorId: string, now: number, workingOn: string | null = null, workingSince: number | null = null): void {
+function touchPresence(
+  state: DemoState,
+  auditorId: string,
+  now: number,
+  work?: { on: string | null; since: number | null },
+): void {
   const prev = state.presence.get(auditorId);
   state.presence.set(auditorId, {
     auditorId,
     instanceId: 'vercel-demo',
     since: prev?.since ?? now,
-    workingOn: workingOn ?? prev?.workingOn ?? null,
-    workingSince: workingOn ? now : prev?.workingSince ?? null,
+    workingOn: work ? work.on : (prev?.workingOn ?? null),
+    workingSince: work ? work.since : (prev?.workingSince ?? null),
     expiresAt: now + PRESENCE_TTL_MS,
   });
 }
@@ -232,7 +249,7 @@ export function auditAction(action: AuditAction): { ok: true; data?: unknown } |
     if (held && held.expiresAt > now) return { ok: false, code: 'LOCKED', by: held.auditorId };
     const token = `${action.auditorId}:${crypto.randomUUID()}`;
     state.locks.set(action.sheetId, { token, auditorId: action.auditorId, expiresAt: now + LOCK_TTL_MS });
-    touchPresence(state, action.auditorId, now, action.sheetId, now);
+    touchPresence(state, action.auditorId, now, { on: action.sheetId, since: now });
     return { ok: true, data: { sheetId: action.sheetId, token } };
   }
 
@@ -240,7 +257,7 @@ export function auditAction(action: AuditAction): { ok: true; data?: unknown } |
     for (const [, lock] of state.locks) {
       if (lock.token === action.token && lock.expiresAt > now) {
         lock.expiresAt = now + LOCK_TTL_MS;
-        touchPresence(state, lock.auditorId, now, state.presence.get(lock.auditorId)?.workingOn ?? null, state.presence.get(lock.auditorId)?.workingSince ?? now);
+        touchPresence(state, lock.auditorId, now);
         return { ok: true };
       }
     }
@@ -251,7 +268,7 @@ export function auditAction(action: AuditAction): { ok: true; data?: unknown } |
     const lock = state.locks.get(action.sheetId);
     if (lock?.token === action.token) {
       state.locks.delete(action.sheetId);
-      touchPresence(state, lock.auditorId, now, null, null);
+      touchPresence(state, lock.auditorId, now, { on: null, since: null });
     }
     return { ok: true };
   }
@@ -276,7 +293,7 @@ export function auditAction(action: AuditAction): { ok: true; data?: unknown } |
       idempotencyKey: `verify-${action.sheetId}-${rec.version + 1}-${crypto.randomUUID().slice(0, 8)}`,
     });
     state.locks.delete(action.sheetId);
-    touchPresence(state, action.auditorId, now, null, null);
+    touchPresence(state, action.auditorId, now, { on: null, since: null });
     return { ok: true, data: { sheetId: action.sheetId } };
   }
 
@@ -297,10 +314,10 @@ export function demoMetricsPayload() {
         messages: { emitted: state.metrics.emitted, naive, perSec: state.metrics.emitted > 0 ? 2 : 0 },
         eventLoop: { p50: 1, p99: 4, max: 12 },
         memory: { rssMb: 128, kbPerConnection: 48 },
-        sheetsPerMinute: state.metrics.sheetsPerMinute,
+        sheetsPerMinute: state.metrics.sheetsPerMinute || state.metrics.sheetsInMinute,
         publishLatencyMs: { p50: 80, p99: 220 },
         slowClients: { degraded: 0, disconnected: 0 },
-        redis: storeBackend() === 'redis' ? 'ready' as const : 'down' as const,
+        redis: storeBackend() === 'redis' ? 'ready' as const : 'memory' as const,
       },
     ],
     note: storeBackend() === 'redis'

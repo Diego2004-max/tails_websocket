@@ -28,7 +28,7 @@ Para una **URL pública en el plan Hobby** sin desplegar el gateway:
 2. En el proyecto, Storage → **Upstash Redis** (plan free; entra en Hobby). Vercel inyecta `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`. No hace falta un Redis de pago ni pegar las claves a mano.
 3. Deploy → abre `/`, `/jury`, `/audit`, `/ops`.
 
-El aviso de arriba dice si el Redis compartido está conectado. Sin esas variables el demo sigue sirviendo, pero cada función tiene su propia memoria.
+Sin esas variables el demo sigue sirviendo, pero cada función tiene su propia memoria. La pantalla no le pide las claves al visitante.
 
 **Probar la simulación en local** (sin Docker):
 
@@ -37,7 +37,7 @@ cp .env.example .env.local   # deja NEXT_PUBLIC_GATEWAY_URL comentada
 pnpm install && pnpm run dev
 ```
 
-Verás el aviso de simulación. Transmití un acta en `/jury` (usa totales que **no cuadren** si quieres ver la cola en `/audit`). Cuando pongas `NEXT_PUBLIC_GATEWAY_URL` y reinicies `next dev`, las mismas páginas pasan al gateway y `/api/demo` responde 404 para no mezclar dos preconteos.
+Transmití un acta en `/jury` (usa totales que **no cuadren** si quieres ver la cola en `/audit`). Cuando pongas `NEXT_PUBLIC_GATEWAY_URL` y reinicies `next dev`, las mismas páginas pasan al gateway y `/api/demo` responde 404 para no mezclar dos preconteos.
 
 Limitaciones honestas para la sustentación: no reemplaza RT-1 (8 instancias), RT-4 (fan-out masivo) ni RT-8; para eso sigue el stack Docker + gateway de abajo.
 

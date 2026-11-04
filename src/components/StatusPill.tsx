@@ -5,7 +5,7 @@ const TEXT: Record<StreamStatus, [string, 'ok' | 'warn' | 'error' | 'idle']> = {
   connecting: ['Conectando…', 'idle'],
   live: ['En vivo', 'ok'],
   reconnecting: ['Reconectando. Conservas lo último que viste.', 'warn'],
-  degraded: ['Datos congelados: el servicio de datos no responde.', 'error'],
+  degraded: ['Sin actualización reciente', 'error'],
 };
 
 export function StatusPill({ status, lastUpdate }: { status: StreamStatus; lastUpdate: number | null }) {

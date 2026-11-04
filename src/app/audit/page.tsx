@@ -81,7 +81,7 @@ export default function AuditPage() {
             <li key={p.auditorId} className="card p-3!">
               <p className="type-heading">{p.auditorId}</p>
               <p className="type-body-sm text-secondary">
-                {p.workingOn ? `Trabaja en ${p.workingOn} desde hace ${formatElapsed(now + skew - (p.workingSince ?? now))}` : 'Disponible'}
+                {p.workingOn ? `Trabaja en ${p.workingOn} desde hace ${formatElapsed(now + skew - (p.workingSince ?? now + skew))}` : 'Disponible'}
                 {' · '}servidor {p.instanceId}
               </p>
             </li>
