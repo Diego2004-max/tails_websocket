@@ -6,7 +6,7 @@ Sistema de preconteo electoral en tiempo real: frontend **Next.js**, gateway **N
 
 Informe técnico (RF/RT, Redis, transporte): [`docs/REPORT.md`](docs/REPORT.md).
 
-Ramas y push a GitHub (`main` + features): [`docs/BRANCHES.md`](docs/BRANCHES.md).
+Flujo de trabajo y publicación de cambios en `main`: [`docs/BRANCHES.md`](docs/BRANCHES.md).
 
 ---
 

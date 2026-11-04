@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo } from 'next/font/google';
 import './globals.css';
-import { DemoBanner } from '@/components/DemoBanner';
 import { Header } from '@/components/Header';
 
 const archivo = Archivo({ subsets: ['latin'], axes: ['wdth'], variable: '--font-archivo', display: 'swap' });
@@ -21,7 +20,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex min-h-dvh flex-col">
         <Header />
         <div className="shell flex flex-1 flex-col pt-6">
-          <DemoBanner />
           <main className="flex flex-1 flex-col">{children}</main>
         </div>
       </body>
