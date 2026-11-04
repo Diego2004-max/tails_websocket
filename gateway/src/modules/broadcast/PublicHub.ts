@@ -241,5 +241,5 @@ export class PublicHub {
         c.close();
       });
     }
-    }
+  }
 }

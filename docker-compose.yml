@@ -1,5 +1,6 @@
 # Local production-like topology: 1 Redis + 8 stateless gateway instances behind nginx
-# (round-robin, NO sticky sessions). Run:  docker compose up --build
+# (round-robin, NO sticky sessions). deploy.replicas only applies in Swarm; with plain Compose:
+#   docker compose up --build --scale gateway=8
 # Public entry point: http://localhost:8080
 services:
   redis:
