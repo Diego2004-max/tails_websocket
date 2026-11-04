@@ -1,0 +1,25 @@
+# Dependencias y caché del gestor. node_modules sin barra: también cubre gateway/.
+node_modules
+.pnpm-store
+.pnp.*
+
+# Build. dist sin barra: también cubre gateway/dist.
+.next
+out
+dist
+*.tsbuildinfo
+next-env.d.ts
+
+# Secretos. .env.example sigue versionado.
+.env
+.env.*
+!.env.example
+
+# Salida de las pruebas de carga
+*.csv
+
+# Herramientas y sistema
+.vercel
+coverage
+*.log
+.DS_Store

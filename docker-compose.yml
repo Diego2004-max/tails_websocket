@@ -1,0 +1,39 @@
+# Local production-like topology: 1 Redis + 8 stateless gateway instances behind nginx
+# (round-robin, NO sticky sessions). deploy.replicas only applies in Swarm; with plain Compose:
+#   docker compose up --build --scale gateway=8
+# Public entry point: http://localhost:8080
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379
+      ALLOWED_ORIGIN: "*"
+      FLUSH_INTERVAL_MS: "2000"
+      FANOUT_BATCH_SIZE: "500"
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 8          # RT-1: eight instances. INSTANCE_ID defaults to the container hostname.
+    ulimits:
+      nofile: { soft: 200000, hard: 200000 }
+
+  lb:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - gateway
