@@ -51,8 +51,8 @@ export default function JuryPage() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
-      <section className="lg:col-span-7">
+    <div className="page lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+      <section>
         <h1 className="type-title">Transmitir acta</h1>
         <p className="type-body-sm mt-1 text-secondary">Puedes enviar sin señal: el acta queda en este dispositivo y sale sola cuando vuelva la red.</p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -99,7 +99,7 @@ export default function JuryPage() {
         </div>
       </section>
 
-      <section className="lg:col-span-5">
+      <section>
         <h2 className="type-title">Tus envíos</h2>
         {outbox.length === 0 ? (
           <p className="type-body-sm mt-2 text-secondary">Aún no has enviado actas. Llena el formulario para empezar.</p>

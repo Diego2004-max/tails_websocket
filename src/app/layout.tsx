@@ -4,7 +4,6 @@ import './globals.css';
 import { DemoBanner } from '@/components/DemoBanner';
 import { Header } from '@/components/Header';
 
-// Self-hosted at build time by next/font (no third-party request at runtime). Width axis = meaning.
 const archivo = Archivo({ subsets: ['latin'], axes: ['wdth'], variable: '--font-archivo', display: 'swap' });
 
 export const metadata: Metadata = {
@@ -19,10 +18,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es-CO" className={archivo.variable} suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: themeBoot }} /></head>
-      <body>
+      <body className="flex min-h-dvh flex-col">
         <Header />
-        <DemoBanner />
-        <main className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">{children}</main>
+        <div className="shell flex flex-1 flex-col pt-6">
+          <DemoBanner />
+          <main className="flex flex-1 flex-col">{children}</main>
+        </div>
       </body>
     </html>
   );

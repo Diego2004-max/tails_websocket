@@ -17,22 +17,22 @@ export function TopicPicker({ onChange }: { onChange: (t: Topic) => void }) {
   const emit = (l: Level, n: number) => onChange(l === 'dept' ? 'dept' : (`${l}:${n}` as Topic));
 
   return (
-    <div className="grid gap-3">
-      <div role="group" aria-label="Nivel" className="grid grid-cols-3 gap-2">
+    <div className="flex flex-wrap items-center gap-3">
+      <div role="group" aria-label="Nivel" className="control-group">
         {LEVELS.map((l) => (
-          <button key={l.id} className="segment" aria-pressed={level === l.id} onClick={() => { setLevel(l.id); setId(1); emit(l.id, 1); }}>
+          <button key={l.id} type="button" className="segment" aria-pressed={level === l.id} onClick={() => { setLevel(l.id); setId(1); emit(l.id, 1); }}>
             {l.label}
           </button>
         ))}
       </div>
       {level !== 'dept' && (
-        <label className="grid gap-1">
-          <span className="type-heading">{level === 'mun' ? 'Número de municipio' : 'Número de puesto'}</span>
+        <label className="flex items-center gap-2">
+          <span className="type-label text-secondary">{level === 'mun' ? 'Municipio' : 'Puesto'}</span>
           <input
-            className="field" type="number" inputMode="numeric" min={1} max={max} value={id}
+            className="field !w-24" type="number" inputMode="numeric" min={1} max={max} value={id}
             onChange={(e) => { const n = Math.min(max, Math.max(1, Number(e.target.value) || 1)); setId(n); emit(level, n); }}
           />
-          <span className="type-body-sm text-secondary">Entre 1 y {max}.</span>
+          <span className="type-label text-secondary">1–{max}</span>
         </label>
       )}
     </div>

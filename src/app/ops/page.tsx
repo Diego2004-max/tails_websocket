@@ -41,7 +41,7 @@ export default function OpsPage() {
   const naive = sum((m) => m.messages.naive);
 
   return (
-    <div className="grid gap-6">
+    <div className="page">
       <section>
         <h1 className="type-title">Operación</h1>
         <p className="type-body-sm mt-1 text-secondary">

@@ -23,7 +23,7 @@ export function ThemeToggle() {
   };
 
   return (
-    <div role="group" aria-label="Tema" className="flex gap-1">
+    <div role="group" aria-label="Tema" className="control-group">
       {(Object.keys(LABEL) as Mode[]).map((m) => (
         <button key={m} className="segment" aria-pressed={mode === m} onClick={() => apply(m)}>{LABEL[m]}</button>
       ))}
