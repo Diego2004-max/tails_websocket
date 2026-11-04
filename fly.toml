@@ -1,0 +1,35 @@
+# Gateway deployment on Fly.io (Fly's edge proxy balances without stickiness by default).
+# Vercel cannot host long-lived WebSocket/SSE servers, so the frontend goes to Vercel and this
+# service goes here (or Railway / Render / any container host).
+#   fly launch --no-deploy --dockerfile gateway/Dockerfile
+#   fly secrets set REDIS_URL=rediss://default:<password>@<host>:6379 ALLOWED_ORIGIN=https://<your-app>.vercel.app
+#   fly deploy && fly scale count 8
+app = "ballot-gateway"
+primary_region = "bog"
+
+[build]
+  dockerfile = "gateway/Dockerfile"
+
+[env]
+  PORT = "4000"
+  FLUSH_INTERVAL_MS = "2000"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 8
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 45000
+    hard_limit = 55000
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "10s"
+    method = "GET"
+    path = "/healthz"
+    timeout = "3s"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"

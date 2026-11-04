@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+/* ---------- Tokens: "Urna" palette ----------
+   Two languages of colour (same rule as the reference identity):
+   - DATA (what the count says): candidate colours, blank, null. Never on buttons or links.
+   - ACTION (what you do): a single deep teal. If it is teal, you control it.
+   Dotted border = not confirmed yet (queued sheet, flagged sheet). Solid border = confirmed. */
+:root {
+  --primary: #12203a;
+  --on-primary: #f4f7fa;
+  --secondary: #55627a;
+  --tertiary: #0a6b5c;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #07554a;
+  --neutral: #eff3f6;
+  --surface: #fbfdfe;
+  --outline: #d3dce4;
+
+  --cand-1: #2b59c3;
+  --cand-2: #d9480f;
+  --cand-3: #7a3fb3;
+  --blank: #8a94a6;
+  --null: #3f4756;
+  --unmarked: #b8c0cc;
+
+  --ok: #2f7a3e;
+  --warn: #f0bf1a;
+  --error: #be1e4b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #e8eef6;
+    --on-primary: #101a2e;
+    --secondary: #a3b0c6;
+    --tertiary: #5fd1b9;
+    --on-tertiary: #07201b;
+    --tertiary-container: #8ae3cf;
+    --neutral: #0e1626;
+    --surface: #16203a;
+    --outline: #2c3a58;
+    --cand-1: #7fa4ff;
+    --cand-2: #ff8f5c;
+    --cand-3: #c49bff;
+    --blank: #8a94a6;
+    --null: #c9d1de;
+    --unmarked: #4a5670;
+    --ok: #6cc47d;
+    --error: #ff7a9c;
+  }
+}
+:root[data-theme="dark"] {
+  --primary: #e8eef6;
+  --on-primary: #101a2e;
+  --secondary: #a3b0c6;
+  --tertiary: #5fd1b9;
+  --on-tertiary: #07201b;
+  --tertiary-container: #8ae3cf;
+  --neutral: #0e1626;
+  --surface: #16203a;
+  --outline: #2c3a58;
+  --cand-1: #7fa4ff;
+  --cand-2: #ff8f5c;
+  --cand-3: #c49bff;
+  --blank: #8a94a6;
+  --null: #c9d1de;
+  --unmarked: #4a5670;
+  --ok: #6cc47d;
+  --error: #ff7a9c;
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-secondary: var(--secondary);
+  --color-tertiary: var(--tertiary);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-neutral: var(--neutral);
+  --color-surface: var(--surface);
+  --color-outline: var(--outline);
+  --color-cand-1: var(--cand-1);
+  --color-cand-2: var(--cand-2);
+  --color-cand-3: var(--cand-3);
+  --color-blank: var(--blank);
+  --color-null: var(--null);
+  --color-unmarked: var(--unmarked);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-error: var(--error);
+  --radius-xs: 2px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --font-sans: var(--font-archivo), system-ui, sans-serif;
+}
+
+html { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+body {
+  background: var(--neutral);
+  color: var(--primary);
+  font-family: var(--font-sans);
+  font-variation-settings: "wdth" 100;
+  line-height: 1.6;
+  min-height: 100dvh;
+}
+
+/* ---------- Typography: width carries meaning ----------
+   extended = naming, normal = reading, condensed + tabular = measuring (every number). */
+.type-display { font-size: 2.25rem; font-weight: 800; line-height: 1.02; letter-spacing: -0.02em; font-variation-settings: "wdth" 118; }
+.type-title   { font-size: 1.5rem;  font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; font-variation-settings: "wdth" 112; }
+.type-heading { font-size: 1rem;    font-weight: 600; line-height: 1.4;  font-variation-settings: "wdth" 100; }
+.type-body-sm { font-size: 0.875rem; line-height: 1.5; }
+.type-label   { font-size: 0.8125rem; font-weight: 500; line-height: 1.3; letter-spacing: 0.01em; }
+.type-num-xl  { font-size: 3rem;    font-weight: 700; line-height: 0.95; letter-spacing: -0.01em; font-variation-settings: "wdth" 75; font-variant-numeric: tabular-nums; }
+.type-num-lg  { font-size: 1.75rem; font-weight: 600; line-height: 1.05; font-variation-settings: "wdth" 78; font-variant-numeric: tabular-nums; }
+.type-num-md  { font-size: 1rem;    font-weight: 500; line-height: 1.4;  font-variation-settings: "wdth" 90; font-variant-numeric: tabular-nums; }
+.type-num-sm  { font-size: 0.75rem; font-weight: 500; line-height: 1.2;  font-variation-settings: "wdth" 80; font-variant-numeric: tabular-nums; }
+@media (min-width: 64rem) {
+  .type-display { font-size: 3.25rem; }
+  .type-num-xl { font-size: 4.5rem; }
+}
+
+/* ---------- Components ---------- */
+.card { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius-md); padding: 20px; }
+.btn-primary {
+  background: var(--tertiary); color: var(--on-tertiary); border-radius: var(--radius-md);
+  min-height: 48px; padding: 12px 20px; font-weight: 600; width: 100%;
+}
+.btn-primary:hover { background: var(--tertiary-container); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-quiet { background: var(--neutral); color: var(--tertiary); border-radius: var(--radius-md); min-height: 44px; padding: 10px 16px; font-weight: 600; }
+.field {
+  background: var(--surface); color: var(--primary); border: 1px solid var(--outline); border-radius: var(--radius-md);
+  min-height: 48px; padding: 12px; width: 100%; font-size: 16px; font-variant-numeric: tabular-nums; font-variation-settings: "wdth" 90;
+}
+.segment { min-height: 44px; border-radius: var(--radius-md); background: var(--neutral); color: var(--secondary); font-weight: 600; padding: 0 14px; }
+.segment[aria-pressed="true"], .segment[data-active="true"] { background: var(--tertiary); color: var(--on-tertiary); }
+.chip { border-radius: var(--radius-sm); padding: 8px; font-size: .8125rem; background: var(--neutral); border: 1px solid var(--outline); }
+.chip[data-state="pending"] { border: 1.5px dotted var(--secondary); background: var(--surface); color: var(--secondary); }
+.chip[data-state="confirmed"] { border: 1.5px solid var(--primary); color: var(--primary); }
+.notice { background: color-mix(in srgb, var(--warn) 22%, transparent); border-radius: var(--radius-sm); padding: 12px; font-size: .875rem; }
+.pill { display: inline-flex; align-items: center; gap: 8px; border-radius: 9999px; padding: 4px 12px; font-size: .8125rem; font-weight: 500; background: var(--surface); border: 1px solid var(--outline); }
+.pill i { width: 8px; height: 8px; border-radius: 9999px; background: var(--secondary); }
+.pill[data-tone="ok"] i { background: var(--ok); }
+.pill[data-tone="warn"] i { background: var(--warn); }
+.pill[data-tone="error"] i { background: var(--error); }
+
+:focus-visible { outline: 2px solid var(--tertiary); outline-offset: 2px; }
+
+/* Skeleton replicates final geometry; no shimmer when motion is reduced. */
+.skeleton { background: var(--outline); border-radius: var(--radius-xs); animation: shimmer 1.6s ease-in-out infinite; }
+@keyframes shimmer { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { scroll-behavior: auto !important; } }
+
+/* The tally strip grows once per data load, left to right. */
+.strip-seg { transform-origin: left; animation: grow 600ms ease-out both; }
+@keyframes grow { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .strip-seg { animation: none; } }
+
+@media (prefers-contrast: more) { .card { border-color: var(--secondary); } .strip-seg { outline: 1px solid var(--primary); } }
