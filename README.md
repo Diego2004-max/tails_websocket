@@ -25,7 +25,7 @@ Para una **URL pública en el plan Hobby** sin desplegar el gateway:
 **Desplegar (para que todos vean el mismo preconteo):**
 
 1. Importa el repo en Vercel. No definas `NEXT_PUBLIC_GATEWAY_URL`.
-2. Storage → crea una base **Upstash Redis** (free) y conéctala al proyecto. Vercel inyecta `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`.
+2. En el proyecto, Storage → **Upstash Redis** (plan free; entra en Hobby). Vercel inyecta `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`. No hace falta un Redis de pago ni pegar las claves a mano.
 3. Deploy → abre `/`, `/jury`, `/audit`, `/ops`.
 
 El aviso de arriba dice si el Redis compartido está conectado. Sin esas variables el demo sigue sirviendo, pero cada función tiene su propia memoria.

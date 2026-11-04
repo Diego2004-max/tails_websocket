@@ -58,7 +58,7 @@ Dos transportes coexisten (WS + SSE) más el endpoint de polling.
 ## 5. Decisiones propias y límites conocidos
 
 - **Actas dudosas no se suman** al acumulado hasta que un auditor las resuelve (nueva versión que cuadra). Así un número publicado no cambia por una acta no verificada. Es una decisión mía; el caso no la fija.
-- La geografía (mesa → puesto → municipio) es determinista y la calcula el servidor; el mensaje del caso trae municipio/puesto del cliente, aquí se ignoran.
+- El acta viaja como en el §3.1: `E14-{puesto}-{mesa}-03` más `mesa`, `puesto` y `municipio` digitados por el jurado. El servidor no los reescribe. El reparto de cuántas mesas hay en cada puesto (el denominador del porcentaje) sí es un censo fijo, porque el caso no publica ese mapa.
 - La foto del acta no se almacena: solo su SHA-256 (`photoHash`). No hay autenticación real; `jurorId`/`auditorId` son identificadores declarados. Antes de producción hacen falta ambas cosas.
 - Los relojes de las instancias se asumen sincronizados para la latencia de publicación y la presencia.
 - Cinco sensores de calidad aún sin hacer: pruebas de integración de los scripts Lua, prueba con 20.000+ conexiones reales, medición de INP en gama baja, validación del `docker compose` con 8 réplicas y despliegue en la nube. Todo eso se hace con los scripts incluidos.

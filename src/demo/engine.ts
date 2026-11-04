@@ -3,7 +3,6 @@ import {
   CANDIDATES,
   compareStreamIds,
   isStreamId,
-  locate,
   parseTopic,
   sumVotes,
   topicsOf,
@@ -100,7 +99,7 @@ export function ingest(submission: SheetSubmission): IngestResult {
     return res;
   }
 
-  const { table, station, municipality } = locate(submission.table);
+  const { table, station, municipality } = submission;
   const flagged = !balances(submission.votes, submission.voters);
   const priority = Math.abs(sumVotes(submission.votes) - submission.voters);
 
@@ -266,6 +265,8 @@ export function auditAction(action: AuditAction): { ok: true; data?: unknown } |
     ingest({
       sheetId: action.sheetId,
       table: rec.table,
+      station: rec.station,
+      municipality: rec.municipality,
       version: rec.version + 1,
       jurorId: action.auditorId,
       closedAt: Math.floor(now / 1000),

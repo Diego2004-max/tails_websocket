@@ -35,6 +35,7 @@ export default function AuditPage() {
         {held && draft ? (
           <div className="card mt-4 grid gap-3">
             <h2 className="type-heading">Trabajando en {held.sheetId}</h2>
+            {current && <p className="type-body-sm text-secondary">Mesa {formatInt(current.table)} · puesto {formatInt(current.station)} · municipio {formatInt(current.municipality)}</p>}
             <p className="type-body-sm text-secondary">Tu bloqueo se renueva solo mientras trabajas. Si dejas de usar la página 5 minutos, el acta vuelve a la cola.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {VOTE_KEYS.map((k) => (
@@ -60,7 +61,8 @@ export default function AuditPage() {
             {queue.map((q) => (
               <li key={q.sheetId} className="chip flex items-center justify-between gap-3" data-state={q.lockedBy ? 'confirmed' : 'pending'}>
                 <div>
-                  <p className="type-heading">Mesa {formatInt(q.table)} · puesto {formatInt(q.station)}</p>
+                  <p className="type-heading">{q.sheetId}</p>
+                  <p className="type-body-sm text-secondary">Mesa {formatInt(q.table)} · puesto {formatInt(q.station)} · municipio {formatInt(q.municipality)}</p>
                   <p className="type-body-sm text-secondary">Diferencia de {formatInt(q.priority)} · versión {q.version}</p>
                   {q.lockedBy && <p className="type-label">La tiene {q.lockedBy}</p>}
                 </div>

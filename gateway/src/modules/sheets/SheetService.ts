@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { balances, locate, sumVotes, VOTE_KEYS, type Votes } from '../../../../shared/domain';
+import { balances, GEOGRAPHY, sheetIdOf, sumVotes, VOTE_KEYS, type Votes } from '../../../../shared/domain';
 import type { AckStatus, SheetSubmission } from '../../../../shared/protocol';
 import { config } from '../../platform/config';
 import type { ScriptedRedis } from '../../platform/redis/client';
@@ -7,8 +7,10 @@ import { keys } from '../../platform/redis/keys';
 
 const count = z.number().int().min(0).max(5000);
 export const submissionSchema = z.object({
-  sheetId: z.string().regex(/^E14-\d{4}-\d{4}-\d{2}$/),
-  table: z.number().int().min(1).max(6400),
+  sheetId: z.string().regex(/^E14-\d{1,4}-\d{4}-\d{2}$/),
+  table: z.number().int().min(1).max(GEOGRAPHY.tables),
+  station: z.number().int().min(1).max(GEOGRAPHY.stations),
+  municipality: z.number().int().min(1).max(GEOGRAPHY.municipalities),
   version: z.number().int().min(1).max(50),
   jurorId: z.string().min(3).max(32),
   closedAt: z.number().int(),
@@ -16,7 +18,7 @@ export const submissionSchema = z.object({
   voters: count,
   photoHash: z.string().min(4).max(128),
   idempotencyKey: z.string().min(8).max(64),
-});
+}).refine((s) => s.sheetId === sheetIdOf(s.station, s.table), { message: 'acta id must be E14-{puesto}-{mesa}-03' });
 
 export class UnavailableError extends Error {
   constructor(cause?: unknown) {
@@ -60,7 +62,7 @@ export class SheetService {
   constructor(private readonly redis: ScriptedRedis) {}
 
   async ingest(input: SheetSubmission, onIngested?: () => void): Promise<IngestResult> {
-    const { table, station, municipality } = locate(input.table);
+    const { table, station, municipality } = input;
     const flagged = !balances(input.votes, input.voters);
     const priority = Math.abs(sumVotes(input.votes) - input.voters);
 

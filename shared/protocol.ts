@@ -5,6 +5,10 @@ import type { Topic, Votes } from './domain';
 export interface SheetSubmission {
   sheetId: string;
   table: number;
+  /** Puesto de votación, as the juror sent it (1–1842). */
+  station: number;
+  /** Municipio, as the juror sent it (1–42). */
+  municipality: number;
   version: number;
   jurorId: string;
   closedAt: number;

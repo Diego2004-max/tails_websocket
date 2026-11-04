@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { sheetIdOf, validLocation } from '@shared/domain';
 import type { SheetSubmission } from '@shared/protocol';
 import { ingest } from '@/demo/engine';
 import { getDemoState } from '@/demo/state';
@@ -18,7 +19,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ type: 'reject', idempotencyKey: 'unknown', reason: 'BAD_REQUEST' });
   }
   const sheet = body.sheet;
-  if (!sheet?.idempotencyKey || !sheet.sheetId) {
+  const locationOk = !!sheet && validLocation(sheet.table, sheet.station, sheet.municipality) && sheet.sheetId === sheetIdOf(sheet.station, sheet.table);
+  if (!sheet?.idempotencyKey || !locationOk) {
     return NextResponse.json({ type: 'reject', idempotencyKey: sheet?.idempotencyKey ?? 'unknown', reason: 'INVALID_SHEET' });
   }
   try {

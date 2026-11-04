@@ -133,11 +133,12 @@ export function useJurySocket(jurorId: string) {
     };
   }, [jurorId, flush, update, commit]);
 
-  const submit = useCallback((table: number, votes: Votes, voters: number, photoHash: string) => {
-    const previous = outboxRef.current.filter((e) => e.submission.table === table);
+  const submit = useCallback((table: number, station: number, municipality: number, votes: Votes, voters: number, photoHash: string) => {
+    const sheetId = sheetIdOf(station, table);
+    const previous = outboxRef.current.filter((e) => e.submission.sheetId === sheetId);
     const version = previous.reduce((max, e) => Math.max(max, e.submission.version), 0) + 1;
     const submission: SheetSubmission = {
-      sheetId: sheetIdOf(table), table, version, jurorId, closedAt: Math.floor(Date.now() / 1000), votes, voters, photoHash,
+      sheetId, table, station, municipality, version, jurorId, closedAt: Math.floor(Date.now() / 1000), votes, voters, photoHash,
       idempotencyKey: crypto.randomUUID(),
     };
     commit([{ submission, state: 'queued', attempts: 0, nextAttemptAt: 0 }, ...outboxRef.current]);

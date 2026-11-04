@@ -29,11 +29,24 @@ interface RestConfig {
 
 const cache = { rev: '0', loaded: false };
 
-function restConfig(): RestConfig | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+function paired(urlKey: string, tokenKey: string): RestConfig | null {
+  const url = process.env[urlKey];
+  const token = process.env[tokenKey];
   if (!url || !token) return null;
   return { url: url.replace(/\/$/, ''), token };
+}
+
+/** Upstash free on Vercel injects these names, sometimes prefixed with the store name. */
+function restConfig(): RestConfig | null {
+  const direct = paired('UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN')
+    ?? paired('KV_REST_API_URL', 'KV_REST_API_TOKEN');
+  if (direct) return direct;
+  const urlKey = Object.keys(process.env).find((k) => k.endsWith('UPSTASH_REDIS_REST_URL') || k.endsWith('KV_REST_API_URL'));
+  if (!urlKey) return null;
+  const tokenKey = urlKey.endsWith('UPSTASH_REDIS_REST_URL')
+    ? urlKey.replace(/UPSTASH_REDIS_REST_URL$/, 'UPSTASH_REDIS_REST_TOKEN')
+    : urlKey.replace(/KV_REST_API_URL$/, 'KV_REST_API_TOKEN');
+  return paired(urlKey, tokenKey);
 }
 
 export function storeBackend(): 'redis' | 'memory' {

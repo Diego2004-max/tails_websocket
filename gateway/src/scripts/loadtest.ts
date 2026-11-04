@@ -12,7 +12,7 @@ import http from 'node:http';
 import net from 'node:net';
 import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
-import { GEOGRAPHY, sheetIdOf, type Votes } from '../../../shared/domain';
+import { GEOGRAPHY, locate, sheetIdOf, type Votes } from '../../../shared/domain';
 import type { SheetSubmission } from '../../../shared/protocol';
 
 const arg = (name: string, fallback: string) => {
@@ -83,8 +83,9 @@ function playDay(): void {
     const early = Math.random() < 0.55; // 55% inside the first third of the day
     const at = early ? Math.random() * (windowMs / 3) : (windowMs / 3) + Math.random() * (windowMs * 2 / 3);
     const { votes, voters } = randomVotes(Math.random() > 0.07);
+    const place = locate(table);
     const base: SheetSubmission = {
-      sheetId: sheetIdOf(table), table, version: 1, jurorId: `JUR-${table}`, closedAt: Math.floor(Date.now() / 1000),
+      sheetId: sheetIdOf(place.station, table), table, station: place.station, municipality: place.municipality, version: 1, jurorId: `JUR-${table}`, closedAt: Math.floor(Date.now() / 1000),
       votes, voters, photoHash: 'loadtest-photo', idempotencyKey: randomUUID(),
     };
     setTimeout(() => {

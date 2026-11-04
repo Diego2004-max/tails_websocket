@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { balances, sumVotes, VOTE_KEYS, type Votes } from '@shared/domain';
+import { balances, GEOGRAPHY, sheetIdOf, sumVotes, validLocation, VOTE_KEYS, type Votes } from '@shared/domain';
 import { CANDIDATE_LABEL, formatInt } from '@/lib/format';
 import { type OutboxEntry, useJurySocket } from '@/lib/useJurySocket';
 
@@ -30,24 +30,29 @@ export default function JuryPage() {
   }, []);
 
   const { outbox, online, pending, submit } = useJurySocket(jurorId);
+  const [municipality, setMunicipality] = useState('');
+  const [station, setStation] = useState('');
   const [table, setTable] = useState('');
   const [votes, setVotes] = useState<Votes>(EMPTY);
   const [voters, setVoters] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  const munNum = Number(municipality);
+  const stationNum = Number(station);
   const tableNum = Number(table);
   const votersNum = Number(voters);
   const sum = sumVotes(votes);
-  const tableOk = Number.isInteger(tableNum) && tableNum >= 1 && tableNum <= 6400;
-  const ready = tableOk && voters !== '' && votersNum >= 0;
+  const locationOk = validLocation(tableNum, stationNum, munNum);
+  const acta = locationOk ? sheetIdOf(stationNum, tableNum) : '';
+  const ready = locationOk && voters !== '' && votersNum >= 0;
   const diff = sum - votersNum;
-  const known = useMemo(() => outbox.find((e) => e.submission.table === tableNum), [outbox, tableNum]);
+  const known = useMemo(() => outbox.find((e) => e.submission.sheetId === acta), [outbox, acta]);
 
   async function onSubmit() {
-    const version = submit(tableNum, votes, votersNum, photo ? await sha256(photo) : 'no-photo');
+    const version = submit(tableNum, stationNum, munNum, votes, votersNum, photo ? await sha256(photo) : 'no-photo');
     setMessage(version > 1 ? `Corrección guardada como versión ${version}.` : 'Acta guardada en este dispositivo. Se envía sola.');
-    setVotes(EMPTY); setVoters(''); setTable(''); setPhoto(null);
+    setVotes(EMPTY); setVoters(''); setMunicipality(''); setStation(''); setTable(''); setPhoto(null);
   }
 
   return (
@@ -61,11 +66,25 @@ export default function JuryPage() {
         </div>
 
         <div className="card mt-4 grid gap-4">
-          <label className="grid gap-1">
-            <span className="type-heading">Número de mesa</span>
-            <input className="field" inputMode="numeric" value={table} onChange={(e) => setTable(e.target.value.replace(/\D/g, ''))} placeholder="1 a 6.400" />
-            {known && <span className="type-body-sm text-secondary">Esta mesa ya tiene un acta. Se enviará como versión {known.submission.version + 1}.</span>}
-          </label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1">
+              <span className="type-heading">Municipio</span>
+              <input className="field" inputMode="numeric" value={municipality} onChange={(e) => setMunicipality(e.target.value.replace(/\D/g, ''))} placeholder="11" />
+              <span className="type-label text-secondary">1–{formatInt(GEOGRAPHY.municipalities)}</span>
+            </label>
+            <label className="grid gap-1">
+              <span className="type-heading">Puesto</span>
+              <input className="field" inputMode="numeric" value={station} onChange={(e) => setStation(e.target.value.replace(/\D/g, ''))} placeholder="176" />
+              <span className="type-label text-secondary">1–{formatInt(GEOGRAPHY.stations)}</span>
+            </label>
+            <label className="grid gap-1">
+              <span className="type-heading">Mesa</span>
+              <input className="field" inputMode="numeric" value={table} onChange={(e) => setTable(e.target.value.replace(/\D/g, ''))} placeholder="4201" />
+              <span className="type-label text-secondary">1–{formatInt(GEOGRAPHY.tables)}</span>
+            </label>
+          </div>
+          <p className="type-body-sm text-secondary">Acta {acta || 'E14-puesto-mesa-03'}. Jurado {jurorId}.</p>
+          {known && <p className="type-body-sm text-secondary">Esa acta ya salió de este dispositivo. Se enviará como versión {known.submission.version + 1}.</p>}
 
           <div className="grid gap-3 sm:grid-cols-2">
             {VOTE_KEYS.map((k) => (
@@ -107,7 +126,8 @@ export default function JuryPage() {
           <ol className="mt-3 grid gap-2">
             {outbox.map((e) => (
               <li key={e.submission.idempotencyKey} className="chip" data-state={CONFIRMED.includes(e.state) ? 'confirmed' : 'pending'}>
-                <p className="type-heading">Mesa {formatInt(e.submission.table)} · versión {e.submission.version}</p>
+                <p className="type-heading">{e.submission.sheetId} · versión {e.submission.version}</p>
+                <p className="type-body-sm text-secondary">Mesa {formatInt(e.submission.table)} · puesto {formatInt(e.submission.station)} · municipio {formatInt(e.submission.municipality)}</p>
                 <p className="type-body-sm">{STATE_TEXT[e.state]}</p>
                 {e.attempts > 1 && <p className="type-label text-secondary">{e.attempts} intentos</p>}
               </li>

@@ -132,7 +132,7 @@ export class AuditHub {
 
     const nextVersion = record.version + 1;
     await this.sheets.ingest({
-      sheetId: msg.sheetId, table: record.table, version: nextVersion, jurorId: s.auditorId, closedAt: Math.floor(Date.now() / 1000),
+      sheetId: msg.sheetId, table: record.table, station: record.station, municipality: record.municipality, version: nextVersion, jurorId: s.auditorId, closedAt: Math.floor(Date.now() / 1000),
       votes, voters: msg.voters, photoHash: 'verified', idempotencyKey: `verify-${msg.sheetId}-${nextVersion}-${randomUUID().slice(0, 8)}`,
     });
     await this.release(s, msg.sheetId, msg.token);

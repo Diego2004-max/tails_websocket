@@ -13,7 +13,11 @@ export const GEOGRAPHY = { tables: 6400, stations: 1842, municipalities: 42 } as
 export type TopicLevel = 'dept' | 'mun' | 'pst';
 export type Topic = 'dept' | `mun:${number}` | `pst:${number}`;
 
-/** Deterministic geography: the server is the source of truth, clients never send it. */
+/**
+ * Census used only to know how many mesas exist at each puesto and municipio
+ * (the case does not publish that map). A transmitted acta carries its own
+ * puesto and municipio; those are not rewritten from this function.
+ */
 export function stationOfTable(table: number): number {
   return Math.ceil((table * GEOGRAPHY.stations) / GEOGRAPHY.tables);
 }
@@ -25,9 +29,17 @@ export function locate(table: number) {
   return { table, station, municipality: municipalityOfStation(station) };
 }
 
-export function sheetIdOf(table: number): string {
-  const { station } = locate(table);
-  return `E14-${String(station).padStart(4, '0')}-${String(table).padStart(4, '0')}-01`;
+/** Case §3.1: `E14-{puesto}-{mesa}-{corporación}`, e.g. E14-176-0042-03. */
+export const CORPORATION = '03';
+
+export function sheetIdOf(station: number, table: number): string {
+  return `E14-${station}-${String(table).padStart(4, '0')}-${CORPORATION}`;
+}
+
+export function validLocation(table: number, station: number, municipality: number): boolean {
+  return Number.isInteger(table) && table >= 1 && table <= GEOGRAPHY.tables
+    && Number.isInteger(station) && station >= 1 && station <= GEOGRAPHY.stations
+    && Number.isInteger(municipality) && municipality >= 1 && municipality <= GEOGRAPHY.municipalities;
 }
 
 export function parseTopic(raw: string | null | undefined): { level: TopicLevel; id: number; topic: Topic } | null {

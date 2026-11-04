@@ -12,7 +12,7 @@ export const formatElapsed = (ms: number): string => {
 };
 
 export const CANDIDATE_LABEL: Record<string, string> = {
-  C1: 'Candidato 1', C2: 'Candidato 2', C3: 'Candidato 3', BLANK: 'Voto en blanco', NULL: 'Voto nulo', UNMARKED: 'No marcado',
+  C1: 'C1', C2: 'C2', C3: 'C3', BLANK: 'Blanco', NULL: 'Nulo', UNMARKED: 'No marcado',
 };
 export const CANDIDATE_BG: Record<string, string> = {
   C1: 'bg-cand-1', C2: 'bg-cand-2', C3: 'bg-cand-3', BLANK: 'bg-blank', NULL: 'bg-null', UNMARKED: 'bg-unmarked',
