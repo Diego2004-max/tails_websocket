@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { balances, GEOGRAPHY, sheetIdOf, sumVotes, validLocation, VOTE_KEYS, type Votes } from '@shared/domain';
 import { CANDIDATE_LABEL, formatInt } from '@/lib/format';
@@ -8,8 +9,8 @@ const EMPTY: Votes = { C1: 0, C2: 0, C3: 0, BLANK: 0, NULL: 0, UNMARKED: 0 };
 const STATE_TEXT: Record<OutboxEntry['state'], string> = {
   queued: 'En cola. Se enviará cuando haya red.',
   sending: 'Enviando…',
-  confirmed: 'Registrada.',
-  flagged: 'Registrada. Pasó a verificación porque los totales no cuadran.',
+  confirmed: 'Registrada. Ya suma en Resultados.',
+  flagged: 'No cuadra. Quedó en la cola de Auditoría.',
   duplicate: 'Ya estaba registrada. No se suma dos veces.',
   stale: 'Ya hay una versión igual o más nueva. No se cambió nada.',
   rejected: 'Rechazada: revisa los datos y envíala de nuevo.',
@@ -22,7 +23,7 @@ async function sha256(file: File): Promise<string> {
 }
 
 export default function JuryPage() {
-  const [jurorId, setJurorId] = useState('JUR-0000');
+  const [jurorId, setJurorId] = useState('');
   useEffect(() => {
     const saved = localStorage.getItem('ballot.juror') ?? `JUR-${Math.floor(10000 + Math.random() * 89999)}`;
     localStorage.setItem('ballot.juror', saved);
@@ -49,6 +50,15 @@ export default function JuryPage() {
   const diff = sum - votersNum;
   const known = useMemo(() => outbox.find((e) => e.submission.sheetId === acta), [outbox, acta]);
 
+  function loadExample() {
+    setMunicipality('11');
+    setStation('176');
+    setTable('4201');
+    setVotes({ C1: 184, C2: 97, C3: 311, BLANK: 22, NULL: 9, UNMARKED: 4 });
+    setVoters('600');
+    setMessage(null);
+  }
+
   async function onSubmit() {
     const version = submit(tableNum, stationNum, munNum, votes, votersNum, photo ? await sha256(photo) : 'no-photo');
     setMessage(version > 1 ? `Corrección guardada como versión ${version}.` : 'Acta guardada en este dispositivo. Se envía sola.');
@@ -69,28 +79,29 @@ export default function JuryPage() {
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="grid gap-1">
               <span className="type-heading">Municipio</span>
-              <input className="field" inputMode="numeric" value={municipality} onChange={(e) => setMunicipality(e.target.value.replace(/\D/g, ''))} placeholder="11" />
+              <input className="field" inputMode="numeric" value={municipality} onChange={(e) => setMunicipality(e.target.value.replace(/\D/g, ''))} placeholder="Vacío" />
               <span className="type-label text-secondary">1–{formatInt(GEOGRAPHY.municipalities)}</span>
             </label>
             <label className="grid gap-1">
               <span className="type-heading">Puesto</span>
-              <input className="field" inputMode="numeric" value={station} onChange={(e) => setStation(e.target.value.replace(/\D/g, ''))} placeholder="176" />
+              <input className="field" inputMode="numeric" value={station} onChange={(e) => setStation(e.target.value.replace(/\D/g, ''))} placeholder="Vacío" />
               <span className="type-label text-secondary">1–{formatInt(GEOGRAPHY.stations)}</span>
             </label>
             <label className="grid gap-1">
               <span className="type-heading">Mesa</span>
-              <input className="field" inputMode="numeric" value={table} onChange={(e) => setTable(e.target.value.replace(/\D/g, ''))} placeholder="4201" />
+              <input className="field" inputMode="numeric" value={table} onChange={(e) => setTable(e.target.value.replace(/\D/g, ''))} placeholder="Vacío" />
               <span className="type-label text-secondary">1–{formatInt(GEOGRAPHY.tables)}</span>
             </label>
           </div>
-          <p className="type-body-sm text-secondary">Acta {acta || 'E14-puesto-mesa-03'}. Jurado {jurorId}.</p>
+          <p className="type-body-sm text-secondary">{acta ? `Acta ${acta}` : 'El acta se arma cuando municipio, puesto y mesa están dentro del rango'}. Jurado {jurorId}.</p>
+          <button type="button" className="btn-quiet w-full" onClick={loadExample}>Cargar ejemplo del caso (no cuadra: pasa a Auditoría)</button>
           {known && <p className="type-body-sm text-secondary">Esa acta ya salió de este dispositivo. Se enviará como versión {known.submission.version + 1}.</p>}
 
           <div className="grid gap-3 sm:grid-cols-2">
             {VOTE_KEYS.map((k) => (
               <label key={k} className="grid gap-1">
                 <span className="type-heading">{CANDIDATE_LABEL[k]}</span>
-                <input className="field" inputMode="numeric" value={votes[k] || ''} placeholder="0"
+                <input className="field" inputMode="numeric" value={votes[k] === 0 ? '' : votes[k]} placeholder="Vacío"
                   onChange={(e) => setVotes({ ...votes, [k]: Number(e.target.value.replace(/\D/g, '')) || 0 })} />
               </label>
             ))}
@@ -98,7 +109,7 @@ export default function JuryPage() {
 
           <label className="grid gap-1">
             <span className="type-heading">Sufragantes</span>
-            <input className="field" inputMode="numeric" value={voters} onChange={(e) => setVoters(e.target.value.replace(/\D/g, ''))} placeholder="Total de personas que votaron" />
+            <input className="field" inputMode="numeric" value={voters} onChange={(e) => setVoters(e.target.value.replace(/\D/g, ''))} placeholder="Vacío" />
           </label>
 
           {voters !== '' && (
@@ -114,6 +125,7 @@ export default function JuryPage() {
           </label>
 
           <button className="btn-primary" disabled={!ready} onClick={onSubmit}>Enviar acta</button>
+          {!ready && <p className="type-body-sm text-secondary">Para enviar hacen falta municipio, puesto, mesa y sufragantes.</p>}
           {message && <p className="type-body-sm" role="status">{message}</p>}
         </div>
       </section>
@@ -129,6 +141,8 @@ export default function JuryPage() {
                 <p className="type-heading">{e.submission.sheetId} · versión {e.submission.version}</p>
                 <p className="type-body-sm text-secondary">Mesa {formatInt(e.submission.table)} · puesto {formatInt(e.submission.station)} · municipio {formatInt(e.submission.municipality)}</p>
                 <p className="type-body-sm">{STATE_TEXT[e.state]}</p>
+                {e.state === 'confirmed' && <Link href="/" className="type-label text-secondary">Ver en Resultados</Link>}
+                {e.state === 'flagged' && <Link href="/audit" className="type-label text-secondary">Abrir en Auditoría</Link>}
                 {e.attempts > 1 && <p className="type-label text-secondary">{e.attempts} intentos</p>}
               </li>
             ))}

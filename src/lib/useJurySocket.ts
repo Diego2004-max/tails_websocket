@@ -81,6 +81,7 @@ export function useJurySocket(jurorId: string) {
   }, [update, sendDemo]);
 
   useEffect(() => {
+    if (!jurorId) return;
     commit(load());
 
     if (!usesGateway) {

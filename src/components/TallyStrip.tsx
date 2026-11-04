@@ -13,7 +13,7 @@ export function TallyStrip({ totals }: { totals: Record<string, number> }) {
     <div>
       <div role="img" aria-label={`Reparto de votos: ${summary}`} className="flex h-[72px] w-full gap-px overflow-hidden rounded-xs sm:h-[88px] lg:h-[120px]">
         {counted === 0 ? (
-          <div className="skeleton h-full w-full" />
+          <div className="flex h-full w-full items-center justify-center bg-outline text-secondary type-body-sm">Sin votos contados</div>
         ) : (
           CANDIDATES.map((c) => {
             const share = (totals[c] ?? 0) / counted;

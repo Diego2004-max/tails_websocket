@@ -14,6 +14,7 @@ export default function PublicResults() {
   const { snapshot, status, corrections, lastUpdate } = useResultsStream(topic);
   const leader = snapshot?.ranking[0];
   const counted = snapshot ? snapshot.ranking.reduce((a, r) => a + r.votes, 0) : 0;
+  const reported = snapshot?.totals.tables ?? 0;
 
   return (
     <div className="page">
@@ -40,15 +41,16 @@ export default function PublicResults() {
 
       <div className="grid items-stretch gap-5 lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)]">
         <section className="card flex flex-col justify-between gap-4" aria-live="polite">
-          <p className="type-label text-secondary">{leader && counted > 0 ? 'Va adelante' : 'Esperando actas'}</p>
-          {leader && counted > 0 ? (
+          <p className="type-label text-secondary">{counted > 0 ? 'Va adelante' : reported > 0 ? 'Mesas informadas, sin votos aún' : 'Esperando actas'}</p>
+          {counted > 0 && leader ? (
             <>
               <p className="type-num-xl">{CANDIDATE_LABEL[leader.candidate]}</p>
               <p className="type-body-sm text-secondary">{formatInt(leader.votes)} votos de {formatInt(counted)} contados</p>
             </>
           ) : (
-            <div className="skeleton h-16 w-full" />
+            <p className="type-num-xl">{formatInt(reported)}</p>
           )}
+          {counted === 0 && <p className="type-body-sm text-secondary">{reported > 0 ? 'mesas ya transmitidas' : 'Cuando un jurado transmita un acta que cuadre, el total aparece aquí.'}</p>}
         </section>
 
         <section className="card min-h-80">

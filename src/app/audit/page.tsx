@@ -5,7 +5,7 @@ import { CANDIDATE_LABEL, formatElapsed, formatInt } from '@/lib/format';
 import { useAuditSocket } from '@/lib/useAuditSocket';
 
 export default function AuditPage() {
-  const [auditorId, setAuditorId] = useState('AUD-000');
+  const [auditorId, setAuditorId] = useState('');
   useEffect(() => {
     const saved = localStorage.getItem('ballot.auditor') ?? `AUD-${Math.floor(100 + Math.random() * 899)}`;
     localStorage.setItem('ballot.auditor', saved);

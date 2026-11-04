@@ -179,6 +179,7 @@ body {
   background: var(--surface); color: var(--primary); border: 1px solid var(--outline); border-radius: var(--radius-md);
   min-height: 44px; padding: 0 12px; width: 100%; font-size: 16px; font-variant-numeric: tabular-nums; font-variation-settings: "wdth" 90;
 }
+.field::placeholder { color: var(--secondary); opacity: .55; }
 .segment { background: transparent; color: var(--secondary); transition: color 150ms ease, background-color 150ms ease; }
 .segment:hover { color: var(--primary); background: color-mix(in srgb, var(--outline) 38%, transparent); }
 .segment[aria-pressed="true"], .segment[data-active="true"] { background: var(--accent-soft); color: var(--tertiary); }

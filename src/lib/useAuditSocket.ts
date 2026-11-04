@@ -54,6 +54,7 @@ export function useAuditSocket(auditorId: string) {
   }, [held]);
 
   useEffect(() => {
+    if (!auditorId) return;
     if (!usesGateway) {
       setOnline(true);
       let disposed = false;
