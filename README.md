@@ -269,7 +269,7 @@ fly deploy
 fly scale count 8
 ```
 
-**Vercel contra el gateway:** variable `NEXT_PUBLIC_GATEWAY_URL=https://<tu-gateway>`. Sin esa variable el mismo deploy simula el preconteo.
+`vercel.json` publica un solo servicio, **`app`** (Next.js en `/`). El gateway no entra: Hobby corta las conexiones largas y un servicio interno no lo puede abrir el navegador. Sin `NEXT_PUBLIC_GATEWAY_URL` el deploy simula el preconteo. Cuando el gateway esté en Fly, esa variable apunta ahí (`https://<tu-gateway>`).
 
 Demo académica viable: **frontend en Vercel free + gateway en Fly/Railway free tier limitado + Upstash Redis**. No alcanzará 400k clientes reales; sí demuestra arquitectura, RT-1 con 8 máquinas pequeñas y RT-8 con loadtest desde tu máquina contra la URL pública.
 
