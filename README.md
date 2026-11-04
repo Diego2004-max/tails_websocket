@@ -323,6 +323,8 @@ Estos no invalidan el diseño; son el siguiente escalón si miden cuello de bote
 | `pnpm` instala en raíz pero gateway falla | Dependencias solo en `gateway/` | `cd gateway && pnpm install` |
 | Actas no suman | Acta *dudosa* (no cuadra contabilidad) | Va a cola en `/audit`; no entra al acumulado hasta resolver |
 | Datos viejos tras pruebas | Redis persistió actas | `pnpm --prefix gateway run reset` |
+| `GET /sw.js 404` en dev | Service worker viejo de otro proyecto en `:3000` | `public/sw.js` limpia el registro; o DevTools → Application → Unregister |
+| `Cannot find module './67.js'` / Fast Refresh reload | Caché `.next` corrupta (p. ej. `build` con `dev` abierto) | Para el servidor y `pnpm run dev:clean` |
 
 ---
 
