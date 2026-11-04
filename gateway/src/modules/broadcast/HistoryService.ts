@@ -1,8 +1,8 @@
-import { compareStreamIds, isStreamId, type Topic } from '../../../shared/domain';
-import type { DeltaMessage } from '../../../shared/protocol';
-import { config } from '../config';
-import type { ScriptedRedis } from '../redis/client';
-import { keys } from '../redis/keys';
+import { compareStreamIds, isStreamId, type Topic } from '../../../../shared/domain';
+import type { DeltaMessage } from '../../../../shared/protocol';
+import { config } from '../../platform/config';
+import type { ScriptedRedis } from '../../platform/redis/client';
+import { keys } from '../../platform/redis/keys';
 import { addDelta, type SheetEvent } from './delta';
 
 export type ReplayResult =

@@ -4,6 +4,17 @@ import type { ScriptedRedis } from '../redis/client';
 import { isRedisReady } from '../redis/client';
 import { keys } from '../redis/keys';
 
+/** What the audience modules are allowed to record. They never read cluster state. */
+export interface RuntimeMetrics {
+  connections: { public: number; jury: number; audit: number };
+  emitted: number;
+  naive: number;
+  slowDegraded: number;
+  slowDisconnected: number;
+  recordSheet(): void;
+  recordPublishLatency(ms: number): void;
+}
+
 export interface InstanceMetrics {
   instanceId: string;
   at: number;

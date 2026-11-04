@@ -1,7 +1,7 @@
-import { CANDIDATES, GEOGRAPHY, locate, parseTopic, type Topic, VOTE_KEYS } from '../../../shared/domain';
-import type { Snapshot } from '../../../shared/protocol';
-import type { ScriptedRedis } from '../redis/client';
-import { keys } from '../redis/keys';
+import { CANDIDATES, GEOGRAPHY, locate, parseTopic, type Topic, VOTE_KEYS } from '../../../../shared/domain';
+import type { Snapshot } from '../../../../shared/protocol';
+import type { ScriptedRedis } from '../../platform/redis/client';
+import { keys } from '../../platform/redis/keys';
 
 const LEVEL_KEY = { dept: 'dept', mun: 'mun', pst: 'pst' } as const;
 

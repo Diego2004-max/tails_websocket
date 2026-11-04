@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
-import { config } from '../config';
-import { keys } from '../redis/keys';
+import { config } from '../platform/config';
+import { keys } from '../platform/redis/keys';
 
 const redis = new Redis(config.redisUrl);
 let cursor = '0';

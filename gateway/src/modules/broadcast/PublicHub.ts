@@ -1,15 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { randomBytes } from 'node:crypto';
-import { parseTopic, type Topic } from '../../../shared/domain';
-import type { DeltaMessage, Snapshot } from '../../../shared/protocol';
-import { config } from '../config';
-import type { Metrics } from '../metrics/Metrics';
-import { Backplane } from './Backplane';
+import { parseTopic, type Topic } from '../../../../shared/domain';
+import type { DeltaMessage, Snapshot } from '../../../../shared/protocol';
+import type { Backplane } from '../../platform/bus/Backplane';
+import { config } from '../../platform/config';
+import type { RuntimeMetrics } from '../../platform/metrics/Metrics';
 import { fanOutInBatches } from './fanOut';
 import { TopicRegistry } from './TopicRegistry';
-import { addDelta, type SheetEvent } from '../services/delta';
-import type { HistoryService } from '../services/HistoryService';
-import type { SnapshotService } from '../services/SnapshotService';
+import { addDelta, type SheetEvent } from './delta';
+import type { HistoryService } from './HistoryService';
+import type { SnapshotService } from './SnapshotService';
 
 class PublicConnection {
   ready = false;
@@ -52,7 +51,7 @@ export class PublicHub {
     private readonly backplane: Backplane,
     private readonly snapshots: SnapshotService,
     private readonly history: HistoryService,
-    private readonly metrics: Metrics,
+    private readonly metrics: RuntimeMetrics,
   ) {
     backplane.onTopic((topic, ev) => this.collect(topic, ev));
     setInterval(() => (this.newThisSecond = 0), 1000).unref();
@@ -242,7 +241,5 @@ export class PublicHub {
         c.close();
       });
     }
-  }
+    }
 }
-
-export const newConnectionId = (): string => randomBytes(4).toString('hex');

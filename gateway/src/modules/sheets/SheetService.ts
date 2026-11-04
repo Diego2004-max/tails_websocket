@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { balances, locate, sumVotes, VOTE_KEYS, type Votes } from '../../../shared/domain';
-import type { AckStatus, SheetSubmission } from '../../../shared/protocol';
-import { config } from '../config';
-import type { ScriptedRedis } from '../redis/client';
-import { keys } from '../redis/keys';
+import { balances, locate, sumVotes, VOTE_KEYS, type Votes } from '../../../../shared/domain';
+import type { AckStatus, SheetSubmission } from '../../../../shared/protocol';
+import { config } from '../../platform/config';
+import type { ScriptedRedis } from '../../platform/redis/client';
+import { keys } from '../../platform/redis/keys';
 
 const count = z.number().int().min(0).max(5000);
 export const submissionSchema = z.object({
@@ -29,6 +29,27 @@ export interface IngestResult {
   status: AckStatus;
   version: number;
 }
+
+/** Read model of one stored sheet. Owned by this module; other modules never see Redis keys. */
+export interface StoredSheet {
+  table: number;
+  station: number;
+  municipality: number;
+  version: number;
+  voters: number;
+  votes: Votes;
+}
+
+export interface SheetIngest {
+  ingest(input: SheetSubmission): Promise<IngestResult>;
+}
+
+export interface SheetQuery {
+  read(sheetId: string): Promise<StoredSheet | null>;
+  readMany(ids: string[]): Promise<Map<string, StoredSheet>>;
+}
+
+export type SheetStore = SheetIngest & SheetQuery;
 
 /**
  * Single responsibility: turn a validated submission into one atomic Redis operation.
@@ -84,13 +105,44 @@ export class SheetService {
     }
   }
 
-  async currentVersion(sheetId: string): Promise<number> {
+  async read(sheetId: string): Promise<StoredSheet | null> {
     try {
-      return Number((await this.redis.hget(keys.sheet(sheetId), 'version')) ?? 0);
+      const rec = await this.redis.hgetall(keys.sheet(sheetId));
+      return parseStored(rec);
     } catch (err) {
       throw new UnavailableError(err);
     }
   }
+
+  async readMany(ids: string[]): Promise<Map<string, StoredSheet>> {
+    const out = new Map<string, StoredSheet>();
+    if (ids.length === 0) return out;
+    try {
+      const pipe = this.redis.pipeline();
+      for (const id of ids) pipe.hgetall(keys.sheet(id));
+      const res = (await pipe.exec()) ?? [];
+      ids.forEach((id, i) => {
+        const rec = (res[i]?.[1] ?? {}) as Record<string, string>;
+        const parsed = parseStored(rec);
+        if (parsed) out.set(id, parsed);
+      });
+      return out;
+    } catch (err) {
+      throw new UnavailableError(err);
+    }
+  }
+}
+
+function parseStored(rec: Record<string, string> | null | undefined): StoredSheet | null {
+  if (!rec?.table) return null;
+  return {
+    table: Number(rec.table),
+    station: Number(rec.station),
+    municipality: Number(rec.municipality),
+    version: Number(rec.version),
+    voters: Number(rec.voters),
+    votes: JSON.parse(rec.votes ?? '{}') as Votes,
+  };
 }
 
 function pickVotes(v: Votes): Votes {

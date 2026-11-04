@@ -1,9 +1,9 @@
 import type { IncomingMessage } from 'node:http';
 import { WebSocket } from 'ws';
-import type { JuryServerMessage } from '../../../shared/protocol';
-import type { Metrics } from '../metrics/Metrics';
-import type { RateLimiter } from '../services/RateLimiter';
-import { submissionSchema, type SheetService, UnavailableError } from '../services/SheetService';
+import type { JuryServerMessage } from '../../../../shared/protocol';
+import type { RuntimeMetrics } from '../../platform/metrics/Metrics';
+import type { RateGate } from '../../platform/rate-limit/RateLimiter';
+import { submissionSchema, UnavailableError, type SheetIngest } from '../sheets';
 
 /**
  * Jurors: WebSocket. They need a bidirectional channel with an explicit, per-sheet answer.
@@ -11,9 +11,9 @@ import { submissionSchema, type SheetService, UnavailableError } from '../servic
  */
 export class JuryHub {
   constructor(
-    private readonly sheets: SheetService,
-    private readonly limiter: RateLimiter,
-    private readonly metrics: Metrics,
+    private readonly sheets: SheetIngest,
+    private readonly limiter: RateGate,
+    private readonly metrics: RuntimeMetrics,
   ) {}
 
   attach(ws: WebSocket, req: IncomingMessage, url: URL): void {

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { addDelta, type SheetEvent } from './delta';
-import { compareStreamIds } from '../../../shared/domain';
-import { ReconnectPolicy } from '../../../shared/reconnect';
+import { compareStreamIds } from '../../../../shared/domain';
+import { ReconnectPolicy } from '../../../../shared/reconnect';
 
 const ev = (id: string, c1: number, correction = false): SheetEvent => ({
   id, sheetId: 'E14-0001-0001-01', table: 1, station: 1, municipality: 1, version: 1, correction, delta: { C1: c1, tables: 1 }, at: 0,

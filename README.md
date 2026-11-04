@@ -50,7 +50,8 @@ Reiniciar los datos: `npm --prefix gateway run reset` y luego `docker compose re
 
 ## Principios aplicados
 
-- **SOLID**: un servicio por responsabilidad (`SheetService`, `LockService`, `PresenceService`, `RateLimiter`, `HistoryService`, `SnapshotService`); `server.ts` es la única raíz de composición.
+- **Monolito modular**: cuatro módulos (`sheets`, `jury`, `broadcast`, `verification`) con API pública en su `index.ts`. El núcleo compartido (`platform/`: Redis, bus, métricas, límite de tasa) no importa módulos. `server.ts` solo compone. El HTTP de petición/respuesta vive en un despachador (`http/router.ts`); WebSocket y SSE no tienen controller porque ya son el adaptador de su módulo.
+- **SOLID**: cada módulo tiene una razón de cambio (acta, jurado, público, auditoría). Los hubs dependen de puertos (`SheetIngest`, `SheetStore`, `RateGate`), no de las claves Redis de otro módulo. La inversión de dependencias se cierra en `server.ts`.
 - **KISS**: un solo `config.ts`, un solo formato de clave Redis (`keys.ts`), SSE para lo unidireccional, protocolo JSON plano.
 - **Idempotencia**: clave por envío + versión monótona por acta, ambas resueltas dentro del mismo script Lua.
 - **Tests**: `npm --prefix gateway test` (lógica pura: deltas, ids de stream, backoff).

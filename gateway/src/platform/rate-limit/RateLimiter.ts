@@ -7,6 +7,11 @@ export interface RateDecision {
   retryAfterSec: number;
 }
 
+/** The only operation other modules may use. */
+export interface RateGate {
+  hit(credential: string): Promise<RateDecision>;
+}
+
 /** Fixed-window counter per credential, shared by all instances through Redis. */
 export class RateLimiter {
   constructor(private readonly redis: ScriptedRedis) {}

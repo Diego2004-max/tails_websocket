@@ -1,18 +1,9 @@
-import type { Topic } from '../../../shared/domain';
-import { compareStreamIds } from '../../../shared/domain';
-import type { DeltaMessage } from '../../../shared/protocol';
+import type { Topic } from '../../../../shared/domain';
+import { compareStreamIds } from '../../../../shared/domain';
+import type { DeltaMessage } from '../../../../shared/protocol';
+import type { SheetEvent } from '../../platform/bus/events';
 
-export interface SheetEvent {
-  id: string;
-  sheetId: string;
-  table: number;
-  station: number;
-  municipality: number;
-  version: number;
-  correction: boolean;
-  delta: Record<string, number>;
-  at: number;
-}
+export type { SheetEvent };
 
 /** Adds one event into an accumulated delta. Pure; used by live coalescing and by replay. */
 export function addDelta(acc: DeltaMessage | null, topic: Topic, ev: SheetEvent): DeltaMessage {

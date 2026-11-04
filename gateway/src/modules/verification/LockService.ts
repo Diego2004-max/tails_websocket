@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { config } from '../config';
-import type { ScriptedRedis } from '../redis/client';
-import { keys } from '../redis/keys';
+import { config } from '../../platform/config';
+import type { ScriptedRedis } from '../../platform/redis/client';
+import { keys } from '../../platform/redis/keys';
 
 export type TakeResult = { ok: true; token: string } | { ok: false; heldBy: string | null };
 

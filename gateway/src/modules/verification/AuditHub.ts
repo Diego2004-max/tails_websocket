@@ -1,15 +1,14 @@
-import { WebSocket } from 'ws';
-import { balances, VOTE_KEYS, type Votes } from '../../../shared/domain';
-import type { AuditClientMessage, AuditServerMessage, PresenceEntry, QueueItem } from '../../../shared/protocol';
-import { config } from '../config';
-import type { Metrics } from '../metrics/Metrics';
-import type { ScriptedRedis } from '../redis/client';
-import { keys } from '../redis/keys';
-import { LockService, ownerOf } from '../services/LockService';
-import type { PresenceService } from '../services/PresenceService';
-import type { RateLimiter } from '../services/RateLimiter';
-import type { SheetService } from '../services/SheetService';
 import { randomUUID } from 'node:crypto';
+import { WebSocket } from 'ws';
+import { balances, VOTE_KEYS, type Votes } from '../../../../shared/domain';
+import type { AuditClientMessage, AuditServerMessage, PresenceEntry } from '../../../../shared/protocol';
+import { config } from '../../platform/config';
+import type { RuntimeMetrics } from '../../platform/metrics/Metrics';
+import type { RateGate } from '../../platform/rate-limit/RateLimiter';
+import type { SheetStore } from '../sheets';
+import { LockService } from './LockService';
+import type { PresenceService } from './PresenceService';
+import type { QueueService } from './QueueService';
 
 interface AuditSession {
   ws: WebSocket;
@@ -31,19 +30,19 @@ export class AuditHub {
   private broadcastTimer: NodeJS.Timeout | null = null;
 
   constructor(
-    private readonly redis: ScriptedRedis,
     private readonly locks: LockService,
     private readonly presence: PresenceService,
-    private readonly sheets: SheetService,
-    private readonly limiter: RateLimiter,
-    private readonly metrics: Metrics,
+    private readonly sheets: SheetStore,
+    private readonly limiter: RateGate,
+    private readonly metrics: RuntimeMetrics,
+    private readonly queue: QueueService,
   ) {
     // Locks that expire silently have no event, so reconcile periodically as well.
     setInterval(() => this.scheduleBroadcast(), 3000).unref();
     setInterval(() => this.pingAll(), 15_000).unref();
   }
 
-  /** Called by the Backplane when ANY instance changed the queue or a lock. */
+  /** Called by the composition root when ANY instance changed the queue or a lock. */
   scheduleBroadcast(): void {
     if (this.broadcastTimer || this.sessions.size === 0) return;
     this.broadcastTimer = setTimeout(() => {
@@ -97,7 +96,7 @@ export class AuditHub {
   }
 
   private async take(s: AuditSession, sheetId: string): Promise<void> {
-    if ((await this.redis.zscore(keys.queue, sheetId)) === null) {
+    if (!(await this.queue.contains(sheetId))) {
       return this.send(s.ws, { type: 'take_denied', sheetId, reason: 'NOT_IN_QUEUE' });
     }
     const result = await this.locks.acquire(sheetId, s.auditorId);
@@ -107,7 +106,7 @@ export class AuditHub {
     s.workingSince = Date.now();
     this.send(s.ws, { type: 'taken', sheetId, token: result.token });
     await this.beat(s);
-    await this.notifyQueueChanged();
+    await this.queue.notifyChanged();
   }
 
   private async release(s: AuditSession, sheetId: string, token: string): Promise<void> {
@@ -115,7 +114,7 @@ export class AuditHub {
     s.tokens.delete(sheetId);
     if (s.workingOn === sheetId) (s.workingOn = null), (s.workingSince = null);
     await this.beat(s);
-    await this.notifyQueueChanged();
+    await this.queue.notifyChanged();
   }
 
   private async resolve(s: AuditSession, msg: Extract<AuditClientMessage, { type: 'resolve' }>): Promise<void> {
@@ -128,13 +127,12 @@ export class AuditHub {
     if (!balances(votes, msg.voters)) {
       return this.send(s.ws, { type: 'error', code: 'INVALID', message: 'Los totales no cuadran con los sufragantes.' });
     }
-    const record = await this.redis.hgetall(keys.sheet(msg.sheetId));
-    const table = Number(record.table);
-    if (!table) return this.send(s.ws, { type: 'error', code: 'INVALID', message: 'Acta desconocida.' });
+    const record = await this.sheets.read(msg.sheetId);
+    if (!record) return this.send(s.ws, { type: 'error', code: 'INVALID', message: 'Acta desconocida.' });
 
-    const nextVersion = (await this.sheets.currentVersion(msg.sheetId)) + 1;
+    const nextVersion = record.version + 1;
     await this.sheets.ingest({
-      sheetId: msg.sheetId, table, version: nextVersion, jurorId: s.auditorId, closedAt: Math.floor(Date.now() / 1000),
+      sheetId: msg.sheetId, table: record.table, version: nextVersion, jurorId: s.auditorId, closedAt: Math.floor(Date.now() / 1000),
       votes, voters: msg.voters, photoHash: 'verified', idempotencyKey: `verify-${msg.sheetId}-${nextVersion}-${randomUUID().slice(0, 8)}`,
     });
     await this.release(s, msg.sheetId, msg.token);
@@ -147,7 +145,7 @@ export class AuditHub {
       for (const [sheetId, token] of s.tokens) await this.locks.release(sheetId, token);
       const stillConnectedElsewhere = [...this.sessions].some((o) => o.auditorId === s.auditorId);
       if (!stillConnectedElsewhere) await this.presence.remove(s.auditorId);
-      await this.notifyQueueChanged();
+      await this.queue.notifyChanged();
     } catch {
       /* TTLs (lock 30 s, presence 20 s) clean up anyway: that is the safety net */
     }
@@ -158,38 +156,15 @@ export class AuditHub {
     await this.presence.beat(entry).catch(() => undefined);
   }
 
-  private notifyQueueChanged(): Promise<unknown> {
-    return this.redis.publish(keys.channel.queue, JSON.stringify({ type: 'queue_changed' })).catch(() => undefined);
-  }
-
   private async broadcast(): Promise<void> {
     if (this.sessions.size === 0) return;
     try {
-      const [queue, presence] = await Promise.all([this.readQueue(), this.presence.list()]);
+      const [queue, presence] = await Promise.all([this.queue.list(), this.presence.list()]);
       const text = JSON.stringify({ type: 'state', queue, presence, serverTime: Date.now() } satisfies AuditServerMessage);
       for (const s of this.sessions) if (s.ws.readyState === WebSocket.OPEN) s.ws.send(text);
     } catch {
       /* Redis down: auditors keep their last view; the UI shows the connection banner */
     }
-  }
-
-  private async readQueue(): Promise<QueueItem[]> {
-    const rows = await this.redis.zrevrange(keys.queue, 0, 99, 'WITHSCORES');
-    const ids: string[] = [];
-    const priorities: number[] = [];
-    for (let i = 0; i < rows.length; i += 2) (ids.push(rows[i]), priorities.push(Number(rows[i + 1])));
-    if (ids.length === 0) return [];
-    const pipe = this.redis.pipeline();
-    for (const id of ids) pipe.hgetall(keys.sheet(id)).get(keys.lock(id));
-    const res = (await pipe.exec()) ?? [];
-    return ids.map((sheetId, i) => {
-      const rec = (res[i * 2]?.[1] ?? {}) as Record<string, string>;
-      const lock = (res[i * 2 + 1]?.[1] ?? null) as string | null;
-      return {
-        sheetId, priority: priorities[i], table: Number(rec.table), station: Number(rec.station), municipality: Number(rec.municipality),
-        version: Number(rec.version), voters: Number(rec.voters), votes: JSON.parse(rec.votes ?? '{}') as Votes, lockedBy: ownerOf(lock),
-      };
-    });
   }
 
   private pingAll(): void {

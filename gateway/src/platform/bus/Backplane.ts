@@ -1,6 +1,6 @@
 import type Redis from 'ioredis';
 import { keys } from '../redis/keys';
-import type { SheetEvent } from '../services/delta';
+import type { SheetEvent } from './events';
 
 type TopicHandler = (topic: string, event: SheetEvent) => void;
 type QueueHandler = () => void;
