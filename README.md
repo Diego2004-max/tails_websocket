@@ -6,6 +6,8 @@ Sistema de preconteo electoral en tiempo real: frontend **Next.js**, gateway **N
 
 Informe técnico (RF/RT, Redis, transporte): [`docs/REPORT.md`](docs/REPORT.md).
 
+Ramas y push a GitHub (`main` + features): [`docs/BRANCHES.md`](docs/BRANCHES.md).
+
 ---
 
 ## Modo demo solo Vercel (sin Fly, sin Docker)
