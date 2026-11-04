@@ -1,8 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { formatInt } from '@/lib/format';
-import { demoApi, GATEWAY_URL } from '@/lib/gateway';
-import { IS_VERCEL_DEMO } from '@/lib/mode';
+import { demoApi, GATEWAY_URL, usesGateway } from '@/lib/gateway';
 
 interface M {
   instanceId: string; uptimeSec: number;
@@ -23,8 +22,8 @@ export default function OpsPage() {
     let alive = true;
     const pull = async () => {
       try {
-        const metricsUrl = IS_VERCEL_DEMO ? demoApi('/metrics/cluster') : `${GATEWAY_URL}/metrics/cluster`;
-        const instanceUrl = IS_VERCEL_DEMO ? demoApi('/instance') : `${GATEWAY_URL}/instance`;
+        const metricsUrl = usesGateway ? `${GATEWAY_URL}/metrics/cluster` : demoApi('/metrics/cluster');
+        const instanceUrl = usesGateway ? `${GATEWAY_URL}/instance` : demoApi('/instance');
         const [c, i] = await Promise.all([fetch(metricsUrl, { cache: 'no-store' }), fetch(instanceUrl, { cache: 'no-store' })]);
         const body = (await c.json()) as { instances: M[] };
         const inst = (await i.json()) as { instanceId: string };
@@ -46,7 +45,7 @@ export default function OpsPage() {
         <h1 className="type-title">Operación</h1>
         <p className="type-body-sm mt-1 text-secondary">
           Se actualiza cada 2 s. Esta consulta la atendió {servedBy || '…'}.
-          {IS_VERCEL_DEMO ? ' Modo demo: una sola función serverless (sin 8 instancias).' : ' Recarga y cambiará de instancia (sin sesiones pegajosas).'}
+          {usesGateway ? ' Recarga y cambiará de instancia (sin sesiones pegajosas).' : ' Simulación en este proceso: una sola instancia, sin el gateway.'}
         </p>
         {error && <p className="notice mt-3" role="alert">No llegan las métricas. Revisa la conexión con el gateway.</p>}
       </section>

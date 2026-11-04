@@ -3,8 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { sheetIdOf, type Votes } from '@shared/domain';
 import type { AckStatus, JuryServerMessage, SheetSubmission } from '@shared/protocol';
 import { ReconnectPolicy } from '@shared/reconnect';
-import { demoApi, wsUrl } from './gateway';
-import { IS_VERCEL_DEMO } from './mode';
+import { demoApi, usesGateway, wsUrl } from './gateway';
 
 export type OutboxState = 'queued' | 'sending' | 'confirmed' | 'flagged' | 'duplicate' | 'stale' | 'rejected';
 export interface OutboxEntry {
@@ -63,7 +62,7 @@ export function useJurySocket(jurorId: string) {
   }, [update]);
 
   const flush = useCallback(() => {
-    if (IS_VERCEL_DEMO) {
+    if (!usesGateway) {
       const now = Date.now();
       for (const entry of outboxRef.current) {
         if (entry.state !== 'queued' || entry.nextAttemptAt > now) continue;
@@ -84,7 +83,7 @@ export function useJurySocket(jurorId: string) {
   useEffect(() => {
     commit(load());
 
-    if (IS_VERCEL_DEMO) {
+    if (!usesGateway) {
       setOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
       const tick = setInterval(flush, 1500);
       const onLine = () => { setOnline(true); flush(); };

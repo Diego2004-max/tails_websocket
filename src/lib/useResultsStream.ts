@@ -3,8 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { compareStreamIds, type Topic } from '@shared/domain';
 import type { DeltaMessage, Snapshot, SyncMessage } from '@shared/protocol';
 import { ReconnectPolicy } from '@shared/reconnect';
-import { demoApi, GATEWAY_URL } from './gateway';
-import { IS_VERCEL_DEMO } from './mode';
+import { demoApi, GATEWAY_URL, usesGateway } from './gateway';
 
 export type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'degraded';
 
@@ -40,7 +39,7 @@ export function useResultsStream(topic: Topic): ResultsView {
   }, []);
 
   useEffect(() => {
-    if (IS_VERCEL_DEMO) {
+    if (!usesGateway) {
       let disposed = false;
       let timer: ReturnType<typeof setInterval> | undefined;
       lastId.current = undefined;

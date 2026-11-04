@@ -3,8 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Votes } from '@shared/domain';
 import type { AuditServerMessage, PresenceEntry, QueueItem } from '@shared/protocol';
 import { ReconnectPolicy } from '@shared/reconnect';
-import { demoApi, wsUrl } from './gateway';
-import { IS_VERCEL_DEMO } from './mode';
+import { demoApi, usesGateway, wsUrl } from './gateway';
 
 const RENEW_EVERY_MS = 10_000;
 const IDLE_AFTER_MS = 5 * 60_000;
@@ -36,7 +35,7 @@ export function useAuditSocket(auditorId: string) {
   }, []);
 
   const send = useCallback((msg: object) => {
-    if (IS_VERCEL_DEMO) {
+    if (!usesGateway) {
       void fetch(demoApi('/audit'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -55,7 +54,7 @@ export function useAuditSocket(auditorId: string) {
   }, [held]);
 
   useEffect(() => {
-    if (IS_VERCEL_DEMO) {
+    if (!usesGateway) {
       setOnline(true);
       let disposed = false;
       const pull = async () => {

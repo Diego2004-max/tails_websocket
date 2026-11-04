@@ -76,7 +76,7 @@ export default function AuditPage() {
         <ul className="mt-3 grid gap-2">
           {presence.length === 0 && <li className="type-body-sm text-secondary">Nadie conectado todavía.</li>}
           {presence.map((p) => (
-            <li key={p.auditorId} className="card !p-3">
+            <li key={p.auditorId} className="card p-3!">
               <p className="type-heading">{p.auditorId}</p>
               <p className="type-body-sm text-secondary">
                 {p.workingOn ? `Trabaja en ${p.workingOn} desde hace ${formatElapsed(now + skew - (p.workingSince ?? now))}` : 'Disponible'}

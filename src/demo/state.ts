@@ -117,6 +117,13 @@ export function getDemoState(): DemoState {
   return g.__ballotDemoState;
 }
 
+/** Swap the in-process cache after a Redis pull. */
+export function replaceDemoState(next: DemoState): DemoState {
+  seedGeography(next);
+  g.__ballotDemoState = next;
+  return next;
+}
+
 export function sheetDelta(record: StoredSheet, sign: 1 | -1): Record<string, number> {
   const delta: Record<string, number> = { tables: sign };
   for (const k of VOTE_KEYS) delta[k] = sign * record.votes[k];
