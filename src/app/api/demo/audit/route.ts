@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { Votes } from '@shared/domain';
 import { auditAction, auditState } from '@/demo/engine';
+import { withDemo } from '@/demo/sync';
 import { demoGuard } from '../_lib';
 
 export const runtime = 'nodejs';
@@ -11,7 +12,8 @@ export async function GET(req: Request) {
   if (blocked) return blocked;
   const url = new URL(req.url);
   const auditor = url.searchParams.get('auditor') ?? undefined;
-  return NextResponse.json({ type: 'state', ...auditState(auditor) });
+  const state = await withDemo(() => auditState(auditor));
+  return NextResponse.json({ type: 'state', ...state });
 }
 
 export async function POST(req: Request) {
@@ -20,6 +22,7 @@ export async function POST(req: Request) {
   const msg = await req.json();
   const auditorId = String(msg.auditorId ?? '').slice(0, 32);
 
+  return withDemo(() => {
   if (msg.type === 'take') {
     const r = auditAction({ type: 'take', sheetId: msg.sheetId, auditorId });
     if (!r.ok) return NextResponse.json({ type: 'take_denied', sheetId: msg.sheetId, reason: r.code === 'LOCKED' ? 'LOCKED' : 'NOT_IN_QUEUE', by: r.by });
@@ -51,4 +54,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ type: 'resolved', sheetId: msg.sheetId });
   }
   return NextResponse.json({ type: 'error', code: 'INVALID', message: 'Acción desconocida' });
+  });
 }

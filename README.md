@@ -10,31 +10,34 @@ Ramas y push a GitHub (`main` + features): [`docs/BRANCHES.md`](docs/BRANCHES.md
 
 ---
 
-## Modo demo solo Vercel (sin Fly, sin Docker)
+## Simulación en el mismo proceso (Vercel, o local sin gateway)
 
-Para una **URL pública en el plan Hobby** sin desplegar el gateway: todo el backend va en **Route Handlers** de Next.js (`/api/demo/*`), usando solo lo que Vercel permite bien:
+El front no tiene un segundo modo que configurar. **`NEXT_PUBLIC_GATEWAY_URL` vacía** → las páginas hablan con `/api/demo/*` en este Next (actas, cola, bloqueos y totales en memoria). Si en Vercel conectas Upstash, ese documento se comparte entre visitas. **Con la URL puesta** → jurado y auditoría van por WebSocket y el público por SSE, contra el gateway. El gateway sigue con un solo despachador (`gateway/src/http/router.ts`); `/api/demo` es el sustituto en proceso, no un controlador por ruta del monolito.
+
+Para una **URL pública en el plan Hobby** sin desplegar el gateway:
 
 | En el gateway completo | En demo Vercel |
 |---|---|
 | SSE / WebSocket persistentes | **HTTP**: polling cada 2 s (público y auditoría) y **POST** (jurado) |
-| Redis + 8 instancias | **Estado en memoria** del runtime Node (se pierde en cold start) |
-| RT-8 con 20k conexiones | Flujo funcional para mostrar UI, actas, cola y acumulados |
+| 8 procesos + Redis del gateway | **Un documento en Upstash** (`ballot:demo:state`) con revisión. Cada función guarda una caché y la refresca si la revisión cambió. Si dos escrituras coinciden, gana una y la otra reintenta. |
+| RT-8 con 20k conexiones | Flujo usable para jurado, auditoría y público sobre la misma URL |
 
-**Desplegar:**
+**Desplegar (para que todos vean el mismo preconteo):**
 
-1. Importa el repo en Vercel.
-2. Variable de entorno: `NEXT_PUBLIC_BALLOT_MODE=vercel`
-3. **No** hace falta `NEXT_PUBLIC_GATEWAY_URL`.
-4. Deploy → abre `/`, `/jury`, `/audit`, `/ops`.
+1. Importa el repo en Vercel. No definas `NEXT_PUBLIC_GATEWAY_URL`.
+2. Storage → crea una base **Upstash Redis** (free) y conéctala al proyecto. Vercel inyecta `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`.
+3. Deploy → abre `/`, `/jury`, `/audit`, `/ops`.
 
-**Probar en local:**
+El aviso de arriba dice si el Redis compartido está conectado. Sin esas variables el demo sigue sirviendo, pero cada función tiene su propia memoria.
+
+**Probar la simulación en local** (sin Docker):
 
 ```bash
-cp .env.example .env.local   # deja NEXT_PUBLIC_BALLOT_MODE=vercel
+cp .env.example .env.local   # deja NEXT_PUBLIC_GATEWAY_URL comentada
 pnpm install && pnpm run dev
 ```
 
-Verás un aviso amarillo *Modo demo Vercel*. Transmití un acta en `/jury` (usa totales que **no cuadren** si quieres ver la cola en `/audit`).
+Verás el aviso de simulación. Transmití un acta en `/jury` (usa totales que **no cuadren** si quieres ver la cola en `/audit`). Cuando pongas `NEXT_PUBLIC_GATEWAY_URL` y reinicies `next dev`, las mismas páginas pasan al gateway y `/api/demo` responde 404 para no mezclar dos preconteos.
 
 Limitaciones honestas para la sustentación: no reemplaza RT-1 (8 instancias), RT-4 (fan-out masivo) ni RT-8; para eso sigue el stack Docker + gateway de abajo.
 
@@ -87,7 +90,8 @@ cp .env.example .env.local
 
 | Variable | Ejemplo | Descripción |
 |---|---|---|
-| `NEXT_PUBLIC_GATEWAY_URL` | `http://localhost:8080` | URL pública del balanceador (sin barra final). WebSocket se deriva reemplazando `http` → `ws`. |
+| `NEXT_PUBLIC_GATEWAY_URL` | *(vacía)* o `http://localhost:8080` | Vacía: simulación en este proceso. Con valor: URL del balanceador o del gateway (sin barra final). WebSocket se deriva reemplazando `http` → `ws`. |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | — | Solo la simulación. Comparten un documento entre funciones de Vercel. |
 
 ### Gateway (Docker, Fly secrets o shell local)
 
@@ -128,7 +132,8 @@ docker compose up --build --scale gateway=8
 En otra terminal:
 
 ```bash
-cp .env.example .env.local   # NEXT_PUBLIC_GATEWAY_URL=http://localhost:8080
+cp .env.example .env.local
+# Descomenta NEXT_PUBLIC_GATEWAY_URL=http://localhost:8080 y reinicia next dev
 pnpm install                 # o npm install
 pnpm run dev                 # http://localhost:3000
 ```
@@ -184,9 +189,9 @@ Solo hay **una** instancia; `/instance` siempre devuelve el mismo id. Para RT-1 
 
 ---
 
-### Modo C — Solo frontend
+### Modo C — Solo el front (simulación)
 
-Si el gateway no está arriba, las páginas cargan pero el stream queda en *connecting* / *degraded* y los WebSockets fallan. Sirve para revisar UI y estilos.
+Sin `NEXT_PUBLIC_GATEWAY_URL` las páginas no se quedan en *connecting*: jurado, auditoría y público usan `/api/demo` en memoria. Sirve para la UI y para el deploy de Vercel. El stack de arriba es el que cumple las 8 instancias.
 
 ---
 
@@ -251,7 +256,7 @@ Vercel **no** sustituye al gateway: en Hobby las funciones cortan conexiones lar
 
 | Pieza | Dónde |
 |---|---|
-| Frontend `src/` | **Vercel** — solo `NEXT_PUBLIC_GATEWAY_URL` |
+| Frontend `src/` | **Vercel**. Sin `NEXT_PUBLIC_GATEWAY_URL` simula y puede usar Upstash. Con esa URL habla con el gateway. |
 | Gateway ×8 + LB | **Fly.io** (`fly.toml`), Railway, Render, o VM + Docker |
 | Redis 7 | Upstash, Redis Cloud, o contenedor gestionado |
 
@@ -264,7 +269,7 @@ fly deploy
 fly scale count 8
 ```
 
-**Vercel:** importar repo, variable `NEXT_PUBLIC_GATEWAY_URL=https://<tu-gateway>`.
+**Vercel contra el gateway:** variable `NEXT_PUBLIC_GATEWAY_URL=https://<tu-gateway>`. Sin esa variable el mismo deploy simula el preconteo.
 
 Demo académica viable: **frontend en Vercel free + gateway en Fly/Railway free tier limitado + Upstash Redis**. No alcanzará 400k clientes reales; sí demuestra arquitectura, RT-1 con 8 máquinas pequeñas y RT-8 con loadtest desde tu máquina contra la URL pública.
 

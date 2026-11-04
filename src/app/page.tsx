@@ -27,7 +27,7 @@ export default function PublicResults() {
         <StatusPill status={status} lastUpdate={lastUpdate} />
       </header>
 
-      <div className="card flex flex-wrap items-center justify-between gap-4 !py-3">
+      <div className="card flex flex-wrap items-center justify-between gap-4 py-3!">
         <TopicPicker onChange={setTopic} />
       </div>
 

@@ -13,6 +13,7 @@ import {
 } from '@shared/domain';
 import type { AckStatus, DeltaMessage, PresenceEntry, QueueItem, SheetSubmission, Snapshot } from '@shared/protocol';
 import { addDelta } from './delta';
+import { storeBackend } from './sync';
 import {
   bumpSheetMetric,
   getDemoState,
@@ -298,9 +299,11 @@ export function demoMetricsPayload() {
         sheetsPerMinute: state.metrics.sheetsPerMinute,
         publishLatencyMs: { p50: 80, p99: 220 },
         slowClients: { degraded: 0, disconnected: 0 },
-        redis: 'ready' as const,
+        redis: storeBackend() === 'redis' ? 'ready' as const : 'down' as const,
       },
     ],
-    note: 'Métricas orientativas en modo demo serverless. Para RT-8 usa el gateway con Docker.',
+    note: storeBackend() === 'redis'
+      ? 'Estado compartido en Redis (Upstash). Todas las visitas de este deploy ven el mismo preconteo.'
+      : 'Sin Redis: el preconteo vive en esta instancia y se pierde al enfriarse. Define UPSTASH_REDIS_REST_URL y UPSTASH_REDIS_REST_TOKEN.',
   };
 }
