@@ -24,7 +24,7 @@ function Mark() {
 export function Header() {
   const path = usePathname();
   return (
-    <header className="mx-auto flex w-full max-w-[1152px] flex-wrap items-center justify-between gap-3 px-4 pb-3 pt-[max(16px,env(safe-area-inset-top))] sm:px-6">
+    <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 pb-3 pt-[max(16px,env(safe-area-inset-top))] sm:px-6">
       <Link href="/" className="flex items-center gap-2 text-primary" aria-label="tally, inicio">
         <Mark />
         <span className="text-xl font-extrabold" style={{ fontVariationSettings: '"wdth" 118' }}>tally</span>

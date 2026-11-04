@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo } from 'next/font/google';
 import './globals.css';
+import { DemoBanner } from '@/components/DemoBanner';
 import { Header } from '@/components/Header';
 
 // Self-hosted at build time by next/font (no third-party request at runtime). Width axis = meaning.
@@ -20,7 +21,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head><script dangerouslySetInnerHTML={{ __html: themeBoot }} /></head>
       <body>
         <Header />
-        <main className="mx-auto w-full max-w-[1152px] px-4 pb-16 sm:px-6">{children}</main>
+        <DemoBanner />
+        <main className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">{children}</main>
       </body>
     </html>
   );

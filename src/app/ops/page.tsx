@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { formatInt } from '@/lib/format';
-import { GATEWAY_URL } from '@/lib/gateway';
+import { demoApi, GATEWAY_URL } from '@/lib/gateway';
+import { IS_VERCEL_DEMO } from '@/lib/mode';
 
 interface M {
   instanceId: string; uptimeSec: number;
@@ -22,7 +23,9 @@ export default function OpsPage() {
     let alive = true;
     const pull = async () => {
       try {
-        const [c, i] = await Promise.all([fetch(`${GATEWAY_URL}/metrics/cluster`, { cache: 'no-store' }), fetch(`${GATEWAY_URL}/instance`, { cache: 'no-store' })]);
+        const metricsUrl = IS_VERCEL_DEMO ? demoApi('/metrics/cluster') : `${GATEWAY_URL}/metrics/cluster`;
+        const instanceUrl = IS_VERCEL_DEMO ? demoApi('/instance') : `${GATEWAY_URL}/instance`;
+        const [c, i] = await Promise.all([fetch(metricsUrl, { cache: 'no-store' }), fetch(instanceUrl, { cache: 'no-store' })]);
         const body = (await c.json()) as { instances: M[] };
         const inst = (await i.json()) as { instanceId: string };
         if (alive) { setInstances(body.instances); setServedBy(inst.instanceId); setError(false); }
@@ -41,7 +44,10 @@ export default function OpsPage() {
     <div className="grid gap-6">
       <section>
         <h1 className="type-title">Operación</h1>
-        <p className="type-body-sm mt-1 text-secondary">Se actualiza cada 2 s. Esta consulta la atendió el servidor {servedBy || '…'}; recarga y cambiará (sin sesiones pegajosas).</p>
+        <p className="type-body-sm mt-1 text-secondary">
+          Se actualiza cada 2 s. Esta consulta la atendió {servedBy || '…'}.
+          {IS_VERCEL_DEMO ? ' Modo demo: una sola función serverless (sin 8 instancias).' : ' Recarga y cambiará de instancia (sin sesiones pegajosas).'}
+        </p>
         {error && <p className="notice mt-3" role="alert">No llegan las métricas. Revisa la conexión con el gateway.</p>}
       </section>
 
@@ -53,7 +59,7 @@ export default function OpsPage() {
       </section>
 
       <section className="card overflow-x-auto">
-        <table className="w-full min-w-[820px] text-left">
+        <table className="w-full min-w-205 text-left">
           <thead>
             <tr className="type-label text-secondary">
               {['Servidor', 'Públicas', 'Jurados', 'Auditores', 'Msg/s', 'Retraso loop p99 / máx (ms)', 'Memoria/conexión (KB)', 'Latencia pub. p50 / p99 (ms)', 'Lentos', 'Redis'].map((h) => (

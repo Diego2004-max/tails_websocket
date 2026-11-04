@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { compareStreamIds, type Topic } from '@shared/domain';
 import type { DeltaMessage, Snapshot, SyncMessage } from '@shared/protocol';
 import { ReconnectPolicy } from '@shared/reconnect';
-import { GATEWAY_URL } from './gateway';
+import { demoApi, GATEWAY_URL } from './gateway';
+import { IS_VERCEL_DEMO } from './mode';
 
 export type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'degraded';
 
@@ -24,10 +25,10 @@ function applyDelta(snap: Snapshot, delta: Record<string, number>, id: string): 
   return { ...snap, totals, ranking, id };
 }
 
+const POLL_MS = 2000;
+
 /**
- * Public stream (SSE). Continuity: we remember the last event id and send it on reconnect, so
- * the server replays what we missed (or sends a snapshot). Reconnection uses full-jitter backoff.
- * Each applied delta is idempotent: anything at or below the current id is ignored.
+ * Public results: SSE against the gateway, or HTTP polling on Vercel demo mode.
  */
 export function useResultsStream(topic: Topic): ResultsView {
   const [view, setView] = useState<ResultsView>({ snapshot: null, status: 'connecting', corrections: 0, lastUpdate: null, reconnects: 0 });
@@ -39,6 +40,56 @@ export function useResultsStream(topic: Topic): ResultsView {
   }, []);
 
   useEffect(() => {
+    if (IS_VERCEL_DEMO) {
+      let disposed = false;
+      let timer: ReturnType<typeof setInterval> | undefined;
+      lastId.current = undefined;
+      setView({ snapshot: null, status: 'connecting', corrections: 0, lastUpdate: null, reconnects: 0 });
+
+      const merge = (msg: DeltaMessage) => {
+        patch((v) => {
+          if (!v.snapshot) return {};
+          if (compareStreamIds(msg.id, v.snapshot.id) <= 0 && Object.keys(msg.delta).length > 0) return {};
+          lastId.current = msg.id;
+          return {
+            snapshot: applyDelta(v.snapshot, msg.delta, msg.id),
+            corrections: v.corrections + msg.corrections,
+            lastUpdate: Date.now(),
+            status: 'live',
+          };
+        });
+      };
+
+      const tick = async () => {
+        if (disposed) return;
+        try {
+          const url = new URL(demoApi('/poll'), window.location.origin);
+          url.searchParams.set('topic', topic);
+          if (lastId.current) url.searchParams.set('since', lastId.current);
+          const res = await fetch(url.toString(), { cache: 'no-store' });
+          if (!res.ok) throw new Error('poll failed');
+          const body = await res.json() as { kind: 'snapshot'; snapshot: Snapshot } | { kind: 'delta'; message: DeltaMessage | null; lastId: string };
+          if (body.kind === 'snapshot') {
+            lastId.current = body.snapshot.id;
+            patch({ snapshot: body.snapshot, status: 'live', lastUpdate: Date.now() });
+          } else if (body.message) {
+            merge(body.message);
+          } else if (body.lastId) {
+            lastId.current = body.lastId;
+          }
+        } catch {
+          patch({ status: 'degraded' });
+        }
+      };
+
+      void tick();
+      timer = setInterval(() => void tick(), POLL_MS);
+      return () => {
+        disposed = true;
+        if (timer) clearInterval(timer);
+      };
+    }
+
     let source: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
@@ -49,7 +100,7 @@ export function useResultsStream(topic: Topic): ResultsView {
     const merge = (msg: DeltaMessage | SyncMessage) => {
       patch((v) => {
         if (!v.snapshot) return {};
-        if (compareStreamIds(msg.id, v.snapshot.id) <= 0 && Object.keys(msg.delta).length > 0) return {}; // already applied
+        if (compareStreamIds(msg.id, v.snapshot.id) <= 0 && Object.keys(msg.delta).length > 0) return {};
         lastId.current = msg.id;
         return { snapshot: applyDelta(v.snapshot, msg.delta, msg.id), corrections: v.corrections + msg.corrections, lastUpdate: Date.now(), status: 'live' };
       });
@@ -83,7 +134,6 @@ export function useResultsStream(topic: Topic): ResultsView {
         patch({ status: 'reconnecting' });
         timer = setTimeout(connect, afterMs);
       });
-      // We own the reconnection (jitter + lastId) instead of the browser's fixed-delay retry.
       source.onerror = () => {
         source?.close();
         patch((v) => ({ status: 'reconnecting', reconnects: v.reconnects + 1 }));

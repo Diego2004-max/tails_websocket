@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { sheetIdOf, type Votes } from '@shared/domain';
 import type { AckStatus, JuryServerMessage, SheetSubmission } from '@shared/protocol';
 import { ReconnectPolicy } from '@shared/reconnect';
-import { wsUrl } from './gateway';
+import { demoApi, wsUrl } from './gateway';
+import { IS_VERCEL_DEMO } from './mode';
 
 export type OutboxState = 'queued' | 'sending' | 'confirmed' | 'flagged' | 'duplicate' | 'stale' | 'rejected';
 export interface OutboxEntry {
@@ -19,7 +20,6 @@ const TERMINAL: OutboxState[] = ['confirmed', 'flagged', 'duplicate', 'stale', '
 const load = (): OutboxEntry[] => {
   try {
     const items = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as OutboxEntry[];
-    // Anything that was "sending" when the page closed is unknown: send it again with the SAME key.
     return items.map((e) => (e.state === 'sending' ? { ...e, state: 'queued' as const } : e));
   } catch {
     return [];
@@ -28,11 +28,6 @@ const load = (): OutboxEntry[] => {
 
 const STATE_FROM_ACK: Record<AckStatus, OutboxState> = { ACCEPTED: 'confirmed', FLAGGED: 'flagged', DUPLICATE: 'duplicate', STALE: 'stale' };
 
-/**
- * Offline-first jury client (RT-6). Sheets go to a local outbox first; a worker sends them
- * whenever the socket is open. The idempotency key is created ONCE per sheet version, so any
- * number of retries is harmless. The entry only leaves "queued" when the server answers.
- */
 export function useJurySocket(jurorId: string) {
   const [outbox, setOutbox] = useState<OutboxEntry[]>([]);
   const [online, setOnline] = useState(false);
@@ -50,7 +45,32 @@ export function useJurySocket(jurorId: string) {
     commit(outboxRef.current.map((e) => (e.submission.idempotencyKey === key ? fn(e) : e)));
   }, [commit]);
 
+  const sendDemo = useCallback(async (entry: OutboxEntry) => {
+    update(entry.submission.idempotencyKey, (e) => ({ ...e, state: 'sending', attempts: e.attempts + 1 }));
+    try {
+      const res = await fetch(demoApi('/submit'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sheet: entry.submission }),
+      });
+      const msg = (await res.json()) as JuryServerMessage;
+      if (msg.type === 'ack') update(msg.idempotencyKey, (e) => ({ ...e, state: STATE_FROM_ACK[msg.status] }));
+      else if (msg.type === 'reject') update(msg.idempotencyKey, (e) => ({ ...e, state: 'rejected' }));
+      else update(msg.idempotencyKey, (e) => ({ ...e, state: 'queued', nextAttemptAt: Date.now() + msg.retryAfterMs }));
+    } catch {
+      update(entry.submission.idempotencyKey, (e) => ({ ...e, state: 'queued', nextAttemptAt: Date.now() + 3000 }));
+    }
+  }, [update]);
+
   const flush = useCallback(() => {
+    if (IS_VERCEL_DEMO) {
+      const now = Date.now();
+      for (const entry of outboxRef.current) {
+        if (entry.state !== 'queued' || entry.nextAttemptAt > now) continue;
+        void sendDemo(entry);
+      }
+      return;
+    }
     const ws = socket.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     const now = Date.now();
@@ -59,10 +79,26 @@ export function useJurySocket(jurorId: string) {
       update(entry.submission.idempotencyKey, (e) => ({ ...e, state: 'sending', attempts: e.attempts + 1 }));
       ws.send(JSON.stringify({ type: 'submit', sheet: entry.submission }));
     }
-  }, [update]);
+  }, [update, sendDemo]);
 
   useEffect(() => {
     commit(load());
+
+    if (IS_VERCEL_DEMO) {
+      setOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+      const tick = setInterval(flush, 1500);
+      const onLine = () => { setOnline(true); flush(); };
+      const offLine = () => setOnline(false);
+      window.addEventListener('online', onLine);
+      window.addEventListener('offline', offLine);
+      flush();
+      return () => {
+        clearInterval(tick);
+        window.removeEventListener('online', onLine);
+        window.removeEventListener('offline', offLine);
+      };
+    }
+
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -79,7 +115,6 @@ export function useJurySocket(jurorId: string) {
       };
       ws.onclose = () => {
         setOnline(false);
-        // Whatever was in flight has no answer yet: back to the queue, same key.
         commit(outboxRef.current.map((e) => (e.state === 'sending' ? { ...e, state: 'queued' as const } : e)));
         if (!disposed) timer = setTimeout(connect, policy.current.next());
       };
@@ -87,7 +122,7 @@ export function useJurySocket(jurorId: string) {
     };
     connect();
 
-    const tick = setInterval(flush, 1500); // picks up entries whose retry time has come
+    const tick = setInterval(flush, 1500);
     const wake = () => flush();
     window.addEventListener('online', wake);
     return () => {
@@ -101,7 +136,7 @@ export function useJurySocket(jurorId: string) {
 
   const submit = useCallback((table: number, votes: Votes, voters: number, photoHash: string) => {
     const previous = outboxRef.current.filter((e) => e.submission.table === table);
-    const version = previous.reduce((max, e) => Math.max(max, e.submission.version), 0) + 1; // a resend of a known table is a correction
+    const version = previous.reduce((max, e) => Math.max(max, e.submission.version), 0) + 1;
     const submission: SheetSubmission = {
       sheetId: sheetIdOf(table), table, version, jurorId, closedAt: Math.floor(Date.now() / 1000), votes, voters, photoHash,
       idempotencyKey: crypto.randomUUID(),
